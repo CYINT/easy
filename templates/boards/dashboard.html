@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Boards - Easy{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Workspace</p>
+    <h1>Your boards</h1>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <form class="panel" method="post">
+    {% csrf_token %}
+    <h2>Create board</h2>
+    {{ form.as_p }}
+    <button type="submit">Create board</button>
+  </form>
+
+  <div class="board-grid">
+    {% for board in boards %}
+      <a class="board-tile" href="{{ board.get_absolute_url }}">
+        <strong>{{ board.name }}</strong>
+        {% if board.description %}<span>{{ board.description|truncatechars:120 }}</span>{% endif %}
+        <small>{{ board.list_count }} list{{ board.list_count|pluralize }}</small>
+      </a>
+    {% empty %}
+      <div class="empty-state">Create your first board to get started.</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

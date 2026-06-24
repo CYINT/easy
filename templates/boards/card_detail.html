@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}{{ card.title }} - Easy{% endblock %}
+
+{% block content %}
+<section class="card-page">
+  <div class="card-main panel">
+    <a class="back-link" href="{{ board.get_absolute_url }}">Back to {{ board.name }}</a>
+    <form method="post">
+      {% csrf_token %}
+      <h1>{{ form.title }}</h1>
+      <label>Description</label>
+      {{ form.description }}
+      <fieldset class="assignee-box">
+        <legend>Assigned users</legend>
+        {{ form.assignees }}
+      </fieldset>
+      <button type="submit">Save card</button>
+    </form>
+
+    <section class="panel-subsection">
+      <h2>Comments</h2>
+      <form method="post" action="{% url 'boards:add_comment' card.id %}">
+        {% csrf_token %}
+        {{ comment_form.body }}
+        <button type="submit">Comment</button>
+      </form>
+      <div class="comments">
+        {% for comment in card.comments.all %}
+          <article class="comment">
+            <strong>{{ comment.author.email|default:comment.author.username }}</strong>
+            <time>{{ comment.created_at|date:"M j, Y H:i" }}</time>
+            <p>{{ comment.body|linebreaksbr }}</p>
+          </article>
+        {% empty %}
+          <p class="muted">No comments yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="card-side">
+    <section class="panel">
+      <h2>Checklists</h2>
+      {% for checklist in card.checklists.all %}
+        <div class="checklist">
+          <h3>{{ checklist.title }}</h3>
+          {% for item in checklist.items.all %}
+            <form class="check-item" method="post" action="{% url 'boards:toggle_checklist_item' item.id %}">
+              {% csrf_token %}
+              <button type="submit" aria-label="Toggle {{ item.text }}">{% if item.is_done %}✓{% else %}&nbsp;{% endif %}</button>
+              <span class="{% if item.is_done %}done{% endif %}">{{ item.text }}</span>
+            </form>
+          {% endfor %}
+          <form class="inline-create" method="post" action="{% url 'boards:add_checklist_item' checklist.id %}">
+            {% csrf_token %}
+            {{ checklist_item_form.text }}
+            <button type="submit">Add item</button>
+          </form>
+        </div>
+      {% empty %}
+        <p class="muted">No checklists yet.</p>
+      {% endfor %}
+      <form class="inline-create stacked" method="post" action="{% url 'boards:add_checklist' card.id %}">
+        {% csrf_token %}
+        {{ checklist_form.title }}
+        <button type="submit">Add checklist</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Attachments</h2>
+      <form method="post" enctype="multipart/form-data" action="{% url 'boards:add_attachment' card.id %}">
+        {% csrf_token %}
+        {{ attachment_form.file }}
+        <button type="submit">Upload</button>
+      </form>
+      <div class="attachments">
+        {% for attachment in card.attachments.all %}
+          {% if attachment.is_image %}
+            <img class="attachment-preview" src="{% url 'boards:download_attachment' attachment.id %}" alt="{{ attachment.original_name }}">
+          {% endif %}
+          <a class="attachment" href="{% url 'boards:download_attachment' attachment.id %}" target="_blank" rel="noopener">
+            <span>{{ attachment.original_name }}</span>
+            <small>{{ attachment.size|filesizeformat }}</small>
+          </a>
+        {% empty %}
+          <p class="muted">No attachments yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+</section>
+{% endblock %}

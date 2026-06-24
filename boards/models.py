@@ -1,0 +1,160 @@
+from pathlib import Path
+from uuid import uuid4
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.db.models import Q
+from django.urls import reverse
+
+User = get_user_model()
+
+
+def attachment_path(instance, filename):
+    suffix = Path(filename).suffix.lower()
+    return f"cards/{instance.card_id}/{uuid4().hex}{suffix}"
+
+
+class Board(models.Model):
+    name = models.CharField(max_length=180)
+    description = models.TextField(blank=True)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="owned_easy_boards")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("boards:board_detail", args=[self.pk])
+
+    def user_can_access(self, user):
+        if not user.is_authenticated:
+            return False
+        if self.owner_id == user.id:
+            return True
+        return self.memberships.filter(user=user).exists()
+
+    def member_users(self):
+        return User.objects.filter(Q(id=self.owner_id) | Q(board_memberships__board=self)).distinct()
+
+
+class BoardMembership(models.Model):
+    ROLE_MEMBER = "member"
+    ROLE_ADMIN = "admin"
+    ROLE_CHOICES = [(ROLE_MEMBER, "Member"), (ROLE_ADMIN, "Admin")]
+
+    board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="board_memberships")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_MEMBER)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["board", "user"], name="unique_easy_board_member")]
+        ordering = ["user__email", "user__username"]
+
+    def __str__(self):
+        return f"{self.user} on {self.board}"
+
+
+class BoardList(models.Model):
+    board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name="lists")
+    title = models.CharField(max_length=180)
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+        indexes = [models.Index(fields=["board", "position"])]
+
+    def __str__(self):
+        return self.title
+
+
+class Card(models.Model):
+    board_list = models.ForeignKey(BoardList, on_delete=models.CASCADE, related_name="cards")
+    title = models.CharField(max_length=220)
+    description = models.TextField(blank=True)
+    position = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_easy_cards")
+    assignees = models.ManyToManyField(User, blank=True, related_name="assigned_easy_cards")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+        indexes = [models.Index(fields=["board_list", "position"])]
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse("boards:card_detail", args=[self.pk])
+
+    @property
+    def board(self):
+        return self.board_list.board
+
+
+class Comment(models.Model):
+    card = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="easy_comments")
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Comment by {self.author} on {self.card}"
+
+
+class Checklist(models.Model):
+    card = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="checklists")
+    title = models.CharField(max_length=180, default="Checklist")
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class ChecklistItem(models.Model):
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="items")
+    text = models.CharField(max_length=260)
+    is_done = models.BooleanField(default=False)
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return self.text
+
+
+class Attachment(models.Model):
+    card = models.ForeignKey(Card, on_delete=models.CASCADE, related_name="attachments")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="easy_attachments")
+    file = models.FileField(upload_to=attachment_path)
+    original_name = models.CharField(max_length=260)
+    content_type = models.CharField(max_length=120)
+    size = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.original_name
+
+    @property
+    def is_image(self):
+        return self.content_type.startswith("image/")

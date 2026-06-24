@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Easy - Team Boards{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Open-source team boards</p>
+    <h1>Plan work with boards, lists, cards, comments, files, and checklists.</h1>
+    <p class="hero-copy">Easy is built for teams that want a clean, self-hosted visual workflow without marketplace sprawl or automation overhead.</p>
+    <div class="hero-actions">
+      <a class="primary-action" href="{% url 'account_signup' %}">Create account</a>
+      <a class="secondary-action" href="{% url 'account_login' %}">Sign in</a>
+    </div>
+  </div>
+  <div class="hero-card" aria-hidden="true">
+    <div class="mini-board">
+      <div class="mini-list"><strong>Plan</strong><span>Define MVP</span><span>Invite team</span></div>
+      <div class="mini-list"><strong>Build</strong><span>Auth</span><span>Board UI</span></div>
+      <div class="mini-list"><strong>Ship</strong><span>Deploy HTTPS</span><span>Backup test</span></div>
+    </div>
+  </div>
+</section>
+{% endblock %}

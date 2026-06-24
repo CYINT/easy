@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ board.name }} - Easy{% endblock %}
+
+{% block content %}
+<section class="board-header">
+  <div>
+    <a class="back-link" href="{% url 'boards:dashboard' %}">Back to boards</a>
+    <h1>{{ board.name }}</h1>
+    {% if board.description %}<p>{{ board.description }}</p>{% endif %}
+  </div>
+  <form class="inline-create" method="post" action="{% url 'boards:create_list' board.id %}">
+    {% csrf_token %}
+    {{ list_form.title }}
+    <button type="submit">Add list</button>
+  </form>
+</section>
+
+<details class="member-panel panel">
+  <summary>Board members</summary>
+  <div class="member-grid">
+    <div>
+      <h2>Access</h2>
+      <p><strong>Owner:</strong> {{ board.owner.email|default:board.owner.username }}</p>
+      {% for membership in board.memberships.all %}
+        <form class="member-row" method="post" action="{% url 'boards:remove_board_member' membership.id %}">
+          {% csrf_token %}
+          <span>{{ membership.user.email|default:membership.user.username }} · {{ membership.get_role_display }}</span>
+          <button type="submit">Remove</button>
+        </form>
+      {% empty %}
+        <p class="muted">No extra members yet.</p>
+      {% endfor %}
+    </div>
+    <form method="post" action="{% url 'boards:add_board_member' board.id %}">
+      {% csrf_token %}
+      <h2>Add member</h2>
+      {{ member_form.as_p }}
+      <button type="submit">Save member</button>
+    </form>
+  </div>
+</details>
+
+<section class="board" data-board-id="{{ board.id }}">
+  {% for list in lists %}
+    <article class="list-column" data-list-id="{{ list.id }}">
+      <header>
+        <h2>{{ list.title }}</h2>
+        <span>{{ list.cards.count }}</span>
+      </header>
+      <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}">
+        {% for card in list.cards.all %}
+          <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}">
+            <strong>{{ card.title }}</strong>
+            {% if card.description %}<span>{{ card.description|truncatechars:90 }}</span>{% endif %}
+            <div class="card-meta">
+              {% if card.assignees.count %}<small>{{ card.assignees.count }} assigned</small>{% endif %}
+              {% if card.checklists.count %}<small>{{ card.checklists.count }} checklist{{ card.checklists.count|pluralize }}</small>{% endif %}
+              {% if card.attachments.count %}<small>{{ card.attachments.count }} file{{ card.attachments.count|pluralize }}</small>{% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+      <form class="card-create" method="post" action="{% url 'boards:create_card' list.id %}">
+        {% csrf_token %}
+        {{ card_form.title }}
+        {{ card_form.description }}
+        <button type="submit">Add card</button>
+      </form>
+    </article>
+  {% empty %}
+    <div class="empty-state wide">Add a list to start organizing cards.</div>
+  {% endfor %}
+</section>
+
+<script src="{% static 'easy/board.js' %}" defer></script>
+{% endblock %}
