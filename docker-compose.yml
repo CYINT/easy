@@ -3,6 +3,8 @@ services:
     build: .
     restart: unless-stopped
     env_file:
+      - path: ./.env
+        required: false
       - path: ${EASY_ENV_FILE:-C:/Users/Dan/.cyint/easy/easy.env}
         required: false
     command: >
@@ -29,6 +31,8 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     env_file:
+      - path: ./.env
+        required: false
       - path: ${EASY_ENV_FILE:-C:/Users/Dan/.cyint/easy/easy.env}
         required: false
     healthcheck:

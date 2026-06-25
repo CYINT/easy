@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "qa:auth-live": "node scripts/auth-live-qa.mjs",
-    "qa:dragdrop": "node scripts/dragdrop-qa.mjs"
+    "qa:dragdrop": "node scripts/dragdrop-qa.mjs",
+    "qa:google-oauth-probe": "node scripts/google-oauth-probe.mjs"
   },
   "devDependencies": {
     "playwright": "^1.57.0"
