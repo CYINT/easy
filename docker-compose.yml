@@ -2,25 +2,17 @@ services:
   easy:
     build: .
     restart: unless-stopped
-    environment:
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-compose-change-me}
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-easy.kuzuryu.ai,localhost,127.0.0.1}
-      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://easy.kuzuryu.ai}
-      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
-      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-true}
-      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-true}
-      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
-      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-true}
-      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-false}
-      DJANGO_DEFAULT_FROM_EMAIL: ${DJANGO_DEFAULT_FROM_EMAIL:-Easy <noreply@easy.kuzuryu.ai>}
-      EASY_ATTACHMENT_MAX_BYTES: ${EASY_ATTACHMENT_MAX_BYTES:-10485760}
-      EASY_ATTACHMENT_ALLOWED_TYPES: ${EASY_ATTACHMENT_ALLOWED_TYPES:-image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain}
-      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
-      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-easy}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-easy}
+    env_file:
+      - path: ${EASY_ENV_FILE:-C:/Users/Dan/.cyint/easy/easy.env}
+        required: false
     command: >
-      sh -c "python manage.py migrate --noinput &&
+      sh -c "if [ -z \"$${DATABASE_URL:-}\" ]; then
+               export POSTGRES_DB=\"$${POSTGRES_DB:-easy}\";
+               export POSTGRES_USER=\"$${POSTGRES_USER:-easy}\";
+               export POSTGRES_PASSWORD=\"$${POSTGRES_PASSWORD:-change-me}\";
+               export DATABASE_URL=\"postgresql://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@db:5432/$${POSTGRES_DB}\";
+             fi &&
+             python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
              gunicorn easy_project.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60"
     depends_on:
@@ -36,10 +28,9 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-easy}
-      POSTGRES_USER: ${POSTGRES_USER:-easy}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    env_file:
+      - path: ${EASY_ENV_FILE:-C:/Users/Dan/.cyint/easy/easy.env}
+        required: false
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-easy} -d ${POSTGRES_DB:-easy}"]
       interval: 10s
@@ -51,6 +42,8 @@ services:
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
+    profiles:
+      - edge
     environment:
       EASY_HOSTNAME: ${EASY_HOSTNAME:-easy.kuzuryu.ai}
     ports:

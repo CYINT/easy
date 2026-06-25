@@ -14,7 +14,7 @@ Easy is designed to run on local infrastructure and can be served publicly behin
 - Card title, description, assigned users, comments, checklists, and attachments.
 - Image attachment previews and permission-checked attachment downloads.
 - Animated drag/drop card movement within and between lists.
-- Docker Compose deployment with PostgreSQL and Caddy HTTPS reverse proxy.
+- Docker Compose deployment with PostgreSQL and optional Caddy HTTPS reverse proxy.
 - Rate limits for login, signup, password reset, and attachment uploads.
 - Security audit logs for login attempts, MFA/passkey changes, board membership changes, and attachment uploads/deletes.
 - Health endpoint at `/health/`.
@@ -74,24 +74,37 @@ The local navigation includes an `MFA and passkeys` link to `/accounts/2fa/`.
 
 ## Docker Deployment
 
+Dan's local bridge host reads secrets from `C:\Users\Dan\.cyint\easy\easy.env` by default:
+
+```powershell
+docker compose up --build -d
+```
+
+For a fresh standalone host, create an env file first:
+
 ```powershell
 Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
-The Compose stack runs:
+The default Compose stack runs:
 
 - `easy`: Django/Gunicorn app
 - `db`: PostgreSQL
-- `caddy`: HTTPS reverse proxy
 
-Only Caddy should expose public ports `80` and `443`. PostgreSQL remains private to the Compose network.
+The app publishes Gunicorn to loopback by default at `127.0.0.1:18082`. PostgreSQL remains private to the Compose network.
+
+To run Caddy as the HTTPS edge on a host where public ports `80` and `443` route directly to this machine:
+
+```powershell
+docker compose --profile edge up --build -d
+```
 
 ## DNS And HTTPS
 
 For `easy.kuzuryu.ai`, create an AWS Route 53 record pointing to the selected local ingress target. AWS is used for DNS only.
 
-Caddy terminates HTTPS and automatically manages certificates when the hostname is publicly reachable and ports `80`/`443` route to the host.
+Caddy terminates HTTPS and automatically manages certificates only when the `edge` profile is enabled and the hostname is publicly reachable on ports `80`/`443`.
 
 ## Backups
 

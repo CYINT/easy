@@ -20,17 +20,19 @@ Easy is intended to run on local CYINT/Dan infrastructure. AWS should be used on
 - Confirm `EASY_UPLOAD_RATE_LIMIT` is set for expected public traffic.
 - Confirm the `easy.security` logger is collected by the host log retention path.
 - Create the Route 53 record for `easy.kuzuryu.ai` pointing to the local ingress target.
-- Run `docker compose up --build -d`.
+- Run `docker compose --profile edge up --build -d` on a host where Caddy should terminate public HTTPS, or `docker compose up --build -d` on Dan's current local bridge host.
 - Run migrations and create the first superuser if needed.
 - Verify `https://easy.kuzuryu.ai/health/` returns `{"status":"ok","service":"easy"}`.
 
 ## Local Bridge Deployment
 
-On Dan's current local bridge host, Easy is routed by the shared HTTPS bridge rather than by the Compose Caddy service. Start only the database and app services so Caddy does not compete for port `443`:
+On Dan's current local bridge host, Easy is routed by the shared HTTPS bridge rather than by the Compose Caddy service. The default Compose profile starts only the database and app services so Caddy does not compete for port `443`:
 
 ```powershell
-docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env up --build -d db easy
+docker compose up --build -d
 ```
+
+This host reads secrets from `C:\Users\Dan\.cyint\easy\easy.env` by default. To use a different env file, set `EASY_ENV_FILE` before running Compose.
 
 The `easy` service publishes Gunicorn only to loopback by default:
 
