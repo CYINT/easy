@@ -64,6 +64,14 @@ Recommended redirect URI:
 https://easy.kuzuryu.ai/accounts/google/login/callback/
 ```
 
+Validate the deployed OAuth client configuration with:
+
+```powershell
+npm run qa:google-oauth-probe
+```
+
+The probe must reach Google without `redirect_uri_mismatch` before the MVP release is tagged.
+
 Do not commit Google OAuth secrets. CYINT local credentials should remain outside this repository.
 
 ## MFA And Passkeys
@@ -105,6 +113,12 @@ docker compose --profile edge up --build -d
 For `easy.kuzuryu.ai`, create an AWS Route 53 record pointing to the selected local ingress target. AWS is used for DNS only.
 
 Caddy terminates HTTPS and automatically manages certificates only when the `edge` profile is enabled and the hostname is publicly reachable on ports `80`/`443`.
+
+Check the current public-ingress posture with:
+
+```powershell
+npm run qa:public-ingress-probe
+```
 
 ## Backups
 

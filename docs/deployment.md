@@ -17,6 +17,7 @@ Easy is intended to run on local CYINT/Dan infrastructure. AWS should be used on
 - Confirm only ports `80` and `443` are publicly exposed.
 - Confirm PostgreSQL is not publicly exposed.
 - Configure Google OAuth redirect URI: `https://easy.kuzuryu.ai/accounts/google/login/callback/`.
+- Verify Google OAuth configuration with `npm run qa:google-oauth-probe`; it must not report `redirect_uri_mismatch`.
 - Confirm `EASY_UPLOAD_RATE_LIMIT` is set for expected public traffic.
 - Confirm the `easy.security` logger is collected by the host log retention path.
 - Create the Route 53 record for `easy.kuzuryu.ai` pointing to the local ingress target.
@@ -55,5 +56,7 @@ Before go-live, select the concrete public ingress pattern:
 - static WAN IP with router port forwarding to the Easy host;
 - dynamic DNS target that Route 53 can track; or
 - a non-AWS tunnel/reverse-proxy route terminating at the Easy host.
+
+Use `npm run qa:public-ingress-probe` to check whether WAN `443` reaches the Easy hostname and whether a local UPnP gateway exposes an existing `443` mapping.
 
 Do not expose the wider LAN while enabling the Easy route.

@@ -42,7 +42,7 @@ let googleTitle = "";
 let googleError = "";
 
 if (location.startsWith("https://accounts.google.com/")) {
-  const googleResponse = await fetch(location, { redirect: "manual" });
+  const googleResponse = await fetch(location, { redirect: "follow" });
   googleStatus = googleResponse.status;
   const googleBody = await googleResponse.text();
   googleTitle = googleBody.match(/<title>([^<]+)<\/title>/i)?.[1] || "";
@@ -50,6 +50,10 @@ if (location.startsWith("https://accounts.google.com/")) {
     googleBody.match(/Error\s+400:\s*([^<\n]+)/i)?.[1]?.trim() ||
     googleBody.match(/redirect_uri_mismatch/i)?.[0] ||
     "";
+}
+
+if (googleError) {
+  throw new Error(`Google OAuth configuration error: ${googleError}`);
 }
 
 console.log(
