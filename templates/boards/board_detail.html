@@ -77,7 +77,7 @@
       </form>
       <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}">
         {% for card in list.cards.all %}
-          <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}">
+          <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}" aria-describedby="board-keyboard-help">
             <strong>{{ card.title }}</strong>
             {% if card.description %}<span>{{ card.description|truncatechars:90 }}</span>{% endif %}
             <div class="card-meta">
@@ -99,6 +99,8 @@
     <div class="empty-state wide">Add a list to start organizing cards.</div>
   {% endfor %}
 </section>
+
+<p id="board-keyboard-help" class="sr-only">Use Alt plus arrow keys to move a focused card within or between lists.</p>
 
 <script src="{% static 'easy/board.js' %}" defer></script>
 {% endblock %}

@@ -1,0 +1,12 @@
+{
+  "name": "easy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "qa:dragdrop": "node scripts/dragdrop-qa.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
+}

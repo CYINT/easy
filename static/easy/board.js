@@ -39,11 +39,56 @@ async function persistMove(card) {
 document.addEventListener("DOMContentLoaded", () => {
   let dragged = null;
   let origin = null;
+  let originNext = null;
+
+  function rememberOrigin(card) {
+    origin = card.parentElement;
+    originNext = card.nextElementSibling;
+  }
+
+  function restoreOrigin(card) {
+    if (!origin) return;
+    if (originNext && originNext.parentElement === origin) origin.insertBefore(card, originNext);
+    else origin.appendChild(card);
+  }
+
+  function siblingList(stack, direction) {
+    const lists = Array.from(document.querySelectorAll("[data-dropzone]"));
+    const current = lists.indexOf(stack);
+    if (current < 0) return null;
+    return lists[current + direction] || null;
+  }
+
+  async function moveWithKeyboard(card, direction) {
+    rememberOrigin(card);
+    const stack = card.closest("[data-dropzone]");
+    if (direction === "up") {
+      const previous = card.previousElementSibling;
+      if (previous) stack.insertBefore(card, previous);
+    } else if (direction === "down") {
+      const next = card.nextElementSibling;
+      if (next) stack.insertBefore(next, card);
+    } else if (direction === "left" || direction === "right") {
+      const target = siblingList(stack, direction === "left" ? -1 : 1);
+      if (target) target.appendChild(card);
+    }
+
+    try {
+      await persistMove(card);
+      card.focus();
+    } catch (error) {
+      restoreOrigin(card);
+      window.alert("Easy could not save that move. The card was returned to its previous list.");
+    } finally {
+      origin = null;
+      originNext = null;
+    }
+  }
 
   document.querySelectorAll("[data-card-id]").forEach((card) => {
     card.addEventListener("dragstart", (event) => {
       dragged = card;
-      origin = card.parentElement;
+      rememberOrigin(card);
       card.classList.add("dragging");
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", card.dataset.cardId);
@@ -56,12 +101,27 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await persistMove(dragged);
       } catch (error) {
-        origin.appendChild(dragged);
+        restoreOrigin(dragged);
         window.alert("Easy could not save that move. The card was returned to its previous list.");
       } finally {
         dragged = null;
         origin = null;
+        originNext = null;
       }
+    });
+
+    card.addEventListener("keydown", (event) => {
+      if (!event.altKey) return;
+      const keys = {
+        ArrowUp: "up",
+        ArrowDown: "down",
+        ArrowLeft: "left",
+        ArrowRight: "right",
+      };
+      const direction = keys[event.key];
+      if (!direction) return;
+      event.preventDefault();
+      moveWithKeyboard(card, direction);
     });
   });
 
