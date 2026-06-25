@@ -119,6 +119,10 @@ docker run --rm -v easy_easy_media:/media -v ${PWD}:/backup alpine sh -c "cd /me
 
 Test both database and attachment restore before relying on a public deployment.
 
+## Core Workflow API
+
+The MVP route and permission contract is documented in `docs/core-workflow-api.md`.
+
 ## Verification
 
 ```powershell

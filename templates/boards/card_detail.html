@@ -15,7 +15,13 @@
         <legend>Assigned users</legend>
         {{ form.assignees }}
       </fieldset>
-      <button type="submit">Save card</button>
+      <div class="form-actions">
+        <button type="submit">Save card</button>
+      </div>
+    </form>
+    <form method="post" action="{% url 'boards:delete_card' card.id %}">
+      {% csrf_token %}
+      <button class="danger-button" type="submit">Delete card</button>
     </form>
 
     <section class="panel-subsection">
@@ -28,8 +34,16 @@
       <div class="comments">
         {% for comment in card.comments.all %}
           <article class="comment">
-            <strong>{{ comment.author.email|default:comment.author.username }}</strong>
-            <time>{{ comment.created_at|date:"M j, Y H:i" }}</time>
+            <div class="row-between">
+              <div>
+                <strong>{{ comment.author.email|default:comment.author.username }}</strong>
+                <time>{{ comment.created_at|date:"M j, Y H:i" }}</time>
+              </div>
+              <form method="post" action="{% url 'boards:delete_comment' comment.id %}">
+                {% csrf_token %}
+                <button class="danger-button compact-button" type="submit">Delete</button>
+              </form>
+            </div>
             <p>{{ comment.body|linebreaksbr }}</p>
           </article>
         {% empty %}
@@ -46,11 +60,22 @@
         <div class="checklist">
           <h3>{{ checklist.title }}</h3>
           {% for item in checklist.items.all %}
-            <form class="check-item" method="post" action="{% url 'boards:toggle_checklist_item' item.id %}">
-              {% csrf_token %}
-              <button type="submit" aria-label="Toggle {{ item.text }}">{% if item.is_done %}✓{% else %}&nbsp;{% endif %}</button>
-              <span class="{% if item.is_done %}done{% endif %}">{{ item.text }}</span>
-            </form>
+            <div class="check-item editable-check-item">
+              <form method="post" action="{% url 'boards:toggle_checklist_item' item.id %}">
+                {% csrf_token %}
+                <button type="submit" aria-label="Toggle {{ item.text }}">{% if item.is_done %}✓{% else %}&nbsp;{% endif %}</button>
+              </form>
+              <form class="check-edit-form" method="post" action="{% url 'boards:update_checklist_item' item.id %}">
+                {% csrf_token %}
+                <input name="text" value="{{ item.text }}" class="{% if item.is_done %}done{% endif %}" aria-label="Checklist item text">
+                <input name="position" type="number" min="0" value="{{ item.position }}" aria-label="Checklist item position">
+                <button class="compact-button" type="submit">Save</button>
+              </form>
+              <form method="post" action="{% url 'boards:delete_checklist_item' item.id %}">
+                {% csrf_token %}
+                <button class="danger-button compact-button" type="submit">Delete</button>
+              </form>
+            </div>
           {% endfor %}
           <form class="inline-create" method="post" action="{% url 'boards:add_checklist_item' checklist.id %}">
             {% csrf_token %}
@@ -84,6 +109,10 @@
             <span>{{ attachment.original_name }}</span>
             <small>{{ attachment.size|filesizeformat }}</small>
           </a>
+          <form method="post" action="{% url 'boards:delete_attachment' attachment.id %}">
+            {% csrf_token %}
+            <button class="danger-button compact-button" type="submit">Delete file</button>
+          </form>
         {% empty %}
           <p class="muted">No attachments yet.</p>
         {% endfor %}

@@ -72,6 +72,13 @@ class ChecklistItemForm(forms.ModelForm):
         fields = ["text"]
 
 
+class ChecklistItemUpdateForm(forms.ModelForm):
+    class Meta:
+        model = ChecklistItem
+        fields = ["text", "position"]
+        widgets = {"position": forms.NumberInput(attrs={"min": 0})}
+
+
 class AttachmentForm(forms.ModelForm):
     class Meta:
         model = Attachment

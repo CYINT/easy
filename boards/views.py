@@ -17,11 +17,12 @@ from .forms import (
     BoardMemberForm,
     CardForm,
     CardUpdateForm,
+    ChecklistItemUpdateForm,
     ChecklistForm,
     ChecklistItemForm,
     CommentForm,
 )
-from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem
+from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment
 
 User = get_user_model()
 
@@ -54,6 +55,12 @@ def _normalize_cards(board_list):
     for index, card in enumerate(board_list.cards.order_by("position", "created_at")):
         if card.position != index:
             Card.objects.filter(pk=card.pk).update(position=index)
+
+
+def _normalize_checklist_items(checklist):
+    for index, item in enumerate(checklist.items.order_by("position", "created_at")):
+        if item.position != index:
+            ChecklistItem.objects.filter(pk=item.pk).update(position=index)
 
 
 def _user_can_manage_board(board, user):
@@ -108,10 +115,37 @@ def board_detail(request, board_id):
             "board": board,
             "lists": lists,
             "list_form": BoardListForm(),
+            "board_form": BoardForm(instance=board),
             "member_form": BoardMemberForm(),
             "card_form": CardForm(),
         },
     )
+
+
+@login_required
+@require_POST
+def update_board(request, board_id):
+    board = _get_board_for_user(board_id, request.user)
+    if not _user_can_manage_board(board, request.user):
+        return HttpResponseForbidden("Only board managers can update boards.")
+    form = BoardForm(request.POST, instance=board)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Board updated.")
+    else:
+        messages.error(request, "Board name is required.")
+    return redirect(board)
+
+
+@login_required
+@require_POST
+def delete_board(request, board_id):
+    board = _get_board_for_user(board_id, request.user)
+    if board.owner_id != request.user.id:
+        return HttpResponseForbidden("Only the board owner can delete this board.")
+    board.delete()
+    messages.success(request, "Board deleted.")
+    return redirect("boards:dashboard")
 
 
 @login_required
@@ -170,6 +204,33 @@ def create_list(request, board_id):
 
 @login_required
 @require_POST
+def update_list(request, list_id):
+    board_list = _get_list_for_user(list_id, request.user)
+    if not _user_can_manage_board(board_list.board, request.user):
+        return HttpResponseForbidden("Only board managers can update lists.")
+    form = BoardListForm(request.POST, instance=board_list)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "List updated.")
+    else:
+        messages.error(request, "List title is required.")
+    return redirect(board_list.board)
+
+
+@login_required
+@require_POST
+def delete_list(request, list_id):
+    board_list = _get_list_for_user(list_id, request.user)
+    board = board_list.board
+    if not _user_can_manage_board(board, request.user):
+        return HttpResponseForbidden("Only board managers can delete lists.")
+    board_list.delete()
+    messages.success(request, "List deleted.")
+    return redirect(board)
+
+
+@login_required
+@require_POST
 def create_card(request, list_id):
     board_list = _get_list_for_user(list_id, request.user)
     form = CardForm(request.POST)
@@ -208,9 +269,20 @@ def card_detail(request, card_id):
             "comment_form": CommentForm(),
             "checklist_form": ChecklistForm(),
             "checklist_item_form": ChecklistItemForm(),
+            "checklist_item_update_form": ChecklistItemUpdateForm(),
             "attachment_form": AttachmentForm(),
         },
     )
+
+
+@login_required
+@require_POST
+def delete_card(request, card_id):
+    card = _get_card_for_user(card_id, request.user)
+    board = card.board
+    card.delete()
+    messages.success(request, "Card deleted.")
+    return redirect(board)
 
 
 @login_required
@@ -261,6 +333,18 @@ def add_comment(request, card_id):
 
 @login_required
 @require_POST
+def delete_comment(request, comment_id):
+    comment = get_object_or_404(Comment.objects.select_related("card"), pk=comment_id)
+    card = _get_card_for_user(comment.card_id, request.user)
+    if comment.author_id != request.user.id and not _user_can_manage_board(card.board, request.user):
+        return HttpResponseForbidden("Only the comment author or a board manager can delete this comment.")
+    comment.delete()
+    messages.success(request, "Comment deleted.")
+    return redirect(card)
+
+
+@login_required
+@require_POST
 def add_checklist(request, card_id):
     card = _get_card_for_user(card_id, request.user)
     form = ChecklistForm(request.POST)
@@ -294,11 +378,44 @@ def add_checklist_item(request, checklist_id):
 
 @login_required
 @require_POST
+def update_checklist_item(request, item_id):
+    item = get_object_or_404(ChecklistItem.objects.select_related("checklist", "checklist__card"), pk=item_id)
+    card = _get_card_for_user(item.checklist.card_id, request.user)
+    form = ChecklistItemUpdateForm(request.POST, instance=item)
+    if form.is_valid():
+        updated = form.save(commit=False)
+        siblings = list(item.checklist.items.exclude(pk=item.pk).order_by("position", "created_at"))
+        position = max(0, min(updated.position, len(siblings)))
+        siblings.insert(position, updated)
+        updated.save()
+        for index, sibling in enumerate(siblings):
+            if sibling.position != index:
+                ChecklistItem.objects.filter(pk=sibling.pk).update(position=index)
+        messages.success(request, "Checklist item updated.")
+    else:
+        messages.error(request, "Checklist item text is required.")
+    return redirect(card)
+
+
+@login_required
+@require_POST
 def toggle_checklist_item(request, item_id):
     item = get_object_or_404(ChecklistItem.objects.select_related("checklist", "checklist__card"), pk=item_id)
     card = _get_card_for_user(item.checklist.card_id, request.user)
     item.is_done = not item.is_done
     item.save(update_fields=["is_done"])
+    return redirect(card)
+
+
+@login_required
+@require_POST
+def delete_checklist_item(request, item_id):
+    item = get_object_or_404(ChecklistItem.objects.select_related("checklist", "checklist__card"), pk=item_id)
+    checklist = item.checklist
+    card = _get_card_for_user(checklist.card_id, request.user)
+    item.delete()
+    _normalize_checklist_items(checklist)
+    messages.success(request, "Checklist item deleted.")
     return redirect(card)
 
 
@@ -322,6 +439,19 @@ def add_attachment(request, card_id):
         for errors in form.errors.values():
             for error in errors:
                 messages.error(request, error)
+    return redirect(card)
+
+
+@login_required
+@require_POST
+def delete_attachment(request, attachment_id):
+    attachment = get_object_or_404(Attachment.objects.select_related("card"), pk=attachment_id)
+    card = _get_card_for_user(attachment.card_id, request.user)
+    if attachment.uploaded_by_id != request.user.id and not _user_can_manage_board(card.board, request.user):
+        return HttpResponseForbidden("Only the uploader or a board manager can delete this attachment.")
+    attachment.file.delete(save=False)
+    attachment.delete()
+    messages.success(request, "Attachment deleted.")
     return redirect(card)
 
 

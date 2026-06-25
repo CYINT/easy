@@ -42,13 +42,39 @@
   </div>
 </details>
 
+<details class="member-panel panel">
+  <summary>Board settings</summary>
+  <div class="member-grid">
+    <form method="post" action="{% url 'boards:update_board' board.id %}">
+      {% csrf_token %}
+      <h2>Edit board</h2>
+      {{ board_form.as_p }}
+      <button type="submit">Save board</button>
+    </form>
+    <form method="post" action="{% url 'boards:delete_board' board.id %}">
+      {% csrf_token %}
+      <h2>Delete board</h2>
+      <p class="muted">Deleting this board also deletes its lists, cards, comments, checklists, and attachments.</p>
+      <button class="danger-button" type="submit">Delete board</button>
+    </form>
+  </div>
+</details>
+
 <section class="board" data-board-id="{{ board.id }}">
   {% for list in lists %}
     <article class="list-column" data-list-id="{{ list.id }}">
       <header>
-        <h2>{{ list.title }}</h2>
+        <form class="list-title-form" method="post" action="{% url 'boards:update_list' list.id %}">
+          {% csrf_token %}
+          <input name="title" value="{{ list.title }}" aria-label="List title">
+          <button type="submit">Save</button>
+        </form>
         <span>{{ list.cards.count }}</span>
       </header>
+      <form method="post" action="{% url 'boards:delete_list' list.id %}">
+        {% csrf_token %}
+        <button class="danger-button compact-button" type="submit">Delete list</button>
+      </form>
       <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}">
         {% for card in list.cards.all %}
           <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}">
