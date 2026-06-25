@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "qa:auth-live": "node scripts/auth-live-qa.mjs",
     "qa:dragdrop": "node scripts/dragdrop-qa.mjs"
   },
   "devDependencies": {
