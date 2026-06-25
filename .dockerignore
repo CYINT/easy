@@ -1,4 +1,6 @@
 .git
+.easy-backup-test
+.easy-qa
 .venv
 __pycache__
 *.pyc

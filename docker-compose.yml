@@ -26,6 +26,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    ports:
+      - "${EASY_BIND_ADDRESS:-127.0.0.1}:${EASY_HOST_PORT:-18082}:8000"
     expose:
       - "8000"
     volumes:

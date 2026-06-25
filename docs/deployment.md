@@ -22,6 +22,28 @@ Easy is intended to run on local CYINT/Dan infrastructure. AWS should be used on
 - Run migrations and create the first superuser if needed.
 - Verify `https://easy.kuzuryu.ai/health/` returns `{"status":"ok","service":"easy"}`.
 
+## Local Bridge Deployment
+
+On Dan's current local bridge host, Easy is routed by the shared HTTPS bridge rather than by the Compose Caddy service. Start only the database and app services so Caddy does not compete for port `443`:
+
+```powershell
+docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env up --build -d db easy
+```
+
+The `easy` service publishes Gunicorn only to loopback by default:
+
+```text
+127.0.0.1:18082 -> easy:8000
+```
+
+The shared local HTTPS bridge then routes:
+
+```text
+easy.kuzuryu.ai -> http://127.0.0.1:18082
+```
+
+Do not set `EASY_BIND_ADDRESS=0.0.0.0` unless the firewall/router exposure has been reviewed and approved.
+
 ## Local Ingress Decision Still Required
 
 Before go-live, select the concrete public ingress pattern:

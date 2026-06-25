@@ -12,7 +12,7 @@ COPY requirements.txt /app/requirements.txt
 RUN python -m pip install --upgrade pip && python -m pip install -r /app/requirements.txt
 
 COPY . /app
-RUN python manage.py collectstatic --noinput && chown -R easy:easy /app
+RUN mkdir -p /app/media && python manage.py collectstatic --noinput && chown -R easy:easy /app
 
 USER easy
 EXPOSE 8000

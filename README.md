@@ -96,7 +96,7 @@ Caddy terminates HTTPS and automatically manages certificates when the hostname 
 PostgreSQL backup:
 
 ```powershell
-docker compose exec db pg_dump -U easy easy > easy-db-backup.sql
+docker compose exec -T db pg_dump --clean --if-exists -U easy easy > easy-db-backup.sql
 ```
 
 PostgreSQL restore:
