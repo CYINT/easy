@@ -49,6 +49,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "boards.security.SecurityAuditMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -106,6 +107,12 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.environ.get("EASY_MEDIA_ROOT", BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+CACHES = {
+    "default": {
+        "BACKEND": os.environ.get("DJANGO_CACHE_BACKEND", "django.core.cache.backends.locmem.LocMemCache"),
+        "LOCATION": os.environ.get("DJANGO_CACHE_LOCATION", "easy-default"),
+    }
+}
 
 SITE_ID = int(os.environ.get("DJANGO_SITE_ID", "1"))
 LOGIN_REDIRECT_URL = "boards:dashboard"
@@ -170,6 +177,28 @@ EASY_ATTACHMENT_ALLOWED_TYPES = env_list(
     "EASY_ATTACHMENT_ALLOWED_TYPES",
     "image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain",
 )
+EASY_UPLOAD_RATE_LIMIT = os.environ.get("EASY_UPLOAD_RATE_LIMIT", "20/h")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+        },
+    },
+    "loggers": {
+        "easy.security": {
+            "handlers": ["console"],
+            "level": os.environ.get("EASY_SECURITY_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+    },
+}
 
 if not DEBUG:
     CSRF_COOKIE_HTTPONLY = True

@@ -23,6 +23,7 @@ from .forms import (
     CommentForm,
 )
 from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment
+from .security import audit_event, rate_limit
 
 User = get_user_model()
 
@@ -166,6 +167,13 @@ def add_board_member(request, board_id):
                 user=user,
                 defaults={"role": form.cleaned_data["role"]},
             )
+            audit_event(
+                "board_member.saved",
+                request=request,
+                board_id=board.id,
+                member_user_id=user.id,
+                role=form.cleaned_data["role"],
+            )
             messages.success(request, "Board member saved.")
     else:
         for errors in form.errors.values():
@@ -181,6 +189,13 @@ def remove_board_member(request, membership_id):
     board = _get_board_for_user(membership.board_id, request.user)
     if not _user_can_manage_board(board, request.user):
         return HttpResponseForbidden("Only board managers can remove members.")
+    audit_event(
+        "board_member.removed",
+        request=request,
+        board_id=board.id,
+        member_user_id=membership.user_id,
+        role=membership.role,
+    )
     membership.delete()
     messages.success(request, "Board member removed.")
     return redirect(board)
@@ -421,18 +436,27 @@ def delete_checklist_item(request, item_id):
 
 @login_required
 @require_POST
+@rate_limit("attachment_upload", "EASY_UPLOAD_RATE_LIMIT")
 def add_attachment(request, card_id):
     card = _get_card_for_user(card_id, request.user)
     form = AttachmentForm(request.POST, request.FILES)
     if form.is_valid():
         uploaded = form.cleaned_data["file"]
-        Attachment.objects.create(
+        attachment = Attachment.objects.create(
             card=card,
             uploaded_by=request.user,
             file=uploaded,
             original_name=uploaded.name,
             content_type=getattr(uploaded, "content_type", "application/octet-stream"),
             size=uploaded.size,
+        )
+        audit_event(
+            "attachment.uploaded",
+            request=request,
+            card_id=card.id,
+            attachment_id=attachment.id,
+            content_type=attachment.content_type,
+            size=attachment.size,
         )
         messages.success(request, "Attachment uploaded.")
     else:
@@ -449,6 +473,14 @@ def delete_attachment(request, attachment_id):
     card = _get_card_for_user(attachment.card_id, request.user)
     if attachment.uploaded_by_id != request.user.id and not _user_can_manage_board(card.board, request.user):
         return HttpResponseForbidden("Only the uploader or a board manager can delete this attachment.")
+    audit_event(
+        "attachment.deleted",
+        request=request,
+        card_id=card.id,
+        attachment_id=attachment.id,
+        content_type=attachment.content_type,
+        size=attachment.size,
+    )
     attachment.file.delete(save=False)
     attachment.delete()
     messages.success(request, "Attachment deleted.")

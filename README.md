@@ -15,6 +15,8 @@ Easy is designed to run on local infrastructure and can be served publicly behin
 - Image attachment previews and permission-checked attachment downloads.
 - Animated drag/drop card movement within and between lists.
 - Docker Compose deployment with PostgreSQL and Caddy HTTPS reverse proxy.
+- Rate limits for login, signup, password reset, and attachment uploads.
+- Security audit logs for login attempts, MFA/passkey changes, board membership changes, and attachment uploads/deletes.
 - Health endpoint at `/health/`.
 
 ## MVP Boundaries
@@ -136,6 +138,8 @@ docker compose config
 - Use a strong `DJANGO_SECRET_KEY` in production.
 - Set `DJANGO_DEBUG=false` for public hosting.
 - Keep `DJANGO_SECURE_SSL_REDIRECT=true`, `DJANGO_SESSION_COOKIE_SECURE=true`, and `DJANGO_CSRF_COOKIE_SECURE=true` behind HTTPS.
+- Keep allauth rate limits enabled for login, signup, and password reset; tune upload throttling with `EASY_UPLOAD_RATE_LIMIT`.
+- Preserve `easy.security` logs in production log collection; they contain JSON audit events without raw secrets or file contents.
 - Expose only ports `80` and `443` to the public internet.
 - Keep PostgreSQL and media storage private.
 - Do not commit `.env`, OAuth secrets, database dumps, uploaded media, or local backups.

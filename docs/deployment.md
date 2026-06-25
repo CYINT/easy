@@ -17,6 +17,8 @@ Easy is intended to run on local CYINT/Dan infrastructure. AWS should be used on
 - Confirm only ports `80` and `443` are publicly exposed.
 - Confirm PostgreSQL is not publicly exposed.
 - Configure Google OAuth redirect URI: `https://easy.kuzuryu.ai/accounts/google/login/callback/`.
+- Confirm `EASY_UPLOAD_RATE_LIMIT` is set for expected public traffic.
+- Confirm the `easy.security` logger is collected by the host log retention path.
 - Create the Route 53 record for `easy.kuzuryu.ai` pointing to the local ingress target.
 - Run `docker compose up --build -d`.
 - Run migrations and create the first superuser if needed.

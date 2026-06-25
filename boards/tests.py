@@ -2,19 +2,25 @@ import json
 import shutil
 import tempfile
 
+from django.contrib.auth.models import AnonymousUser
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
+from django.http import HttpResponse
+from django.test import RequestFactory
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment
+from .security import SecurityAuditMiddleware
 
 User = get_user_model()
 
 
 class EasyBoardTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.media_root = tempfile.mkdtemp()
         self.owner = User.objects.create_user(username="owner", email="owner@example.com", password="password-12345")
         self.member = User.objects.create_user(username="member", email="member@example.com", password="password-12345")
@@ -56,16 +62,20 @@ class EasyBoardTests(TestCase):
     def test_owner_can_add_and_remove_board_member(self):
         BoardMembership.objects.filter(board=self.board, user=self.outsider).delete()
         self.client.force_login(self.owner)
-        response = self.client.post(
-            reverse("boards:add_board_member", args=[self.board.id]),
-            {"email": self.outsider.email, "role": "admin"},
-        )
+        with self.assertLogs("easy.security", level="INFO") as logs:
+            response = self.client.post(
+                reverse("boards:add_board_member", args=[self.board.id]),
+                {"email": self.outsider.email, "role": "admin"},
+            )
         self.assertEqual(response.status_code, 302)
+        self.assertIn("board_member.saved", logs.output[0])
         membership = BoardMembership.objects.get(board=self.board, user=self.outsider)
         self.assertEqual(membership.role, "admin")
 
-        response = self.client.post(reverse("boards:remove_board_member", args=[membership.id]))
+        with self.assertLogs("easy.security", level="INFO") as logs:
+            response = self.client.post(reverse("boards:remove_board_member", args=[membership.id]))
         self.assertEqual(response.status_code, 302)
+        self.assertIn("board_member.removed", logs.output[0])
         self.assertFalse(BoardMembership.objects.filter(pk=membership.id).exists())
 
     def test_board_update_and_delete_are_limited_to_owner_or_manager(self):
@@ -207,8 +217,10 @@ class EasyBoardTests(TestCase):
         with override_settings(MEDIA_ROOT=self.media_root):
             self.client.force_login(self.owner)
             upload = SimpleUploadedFile("sample.png", b"fake-png", content_type="image/png")
-            response = self.client.post(reverse("boards:add_attachment", args=[self.first.id]), {"file": upload})
+            with self.assertLogs("easy.security", level="INFO") as logs:
+                response = self.client.post(reverse("boards:add_attachment", args=[self.first.id]), {"file": upload})
             self.assertEqual(response.status_code, 302)
+            self.assertIn("attachment.uploaded", logs.output[0])
             attachment = Attachment.objects.get(card=self.first)
 
             response = self.client.get(reverse("boards:download_attachment", args=[attachment.id]))
@@ -232,12 +244,38 @@ class EasyBoardTests(TestCase):
             self.assertEqual(response.status_code, 302)
             attachment = Attachment.objects.get(card=self.first)
 
-            response = self.client.post(reverse("boards:delete_attachment", args=[attachment.id]))
+            with self.assertLogs("easy.security", level="INFO") as logs:
+                response = self.client.post(reverse("boards:delete_attachment", args=[attachment.id]))
             self.assertEqual(response.status_code, 302)
+            self.assertIn("attachment.deleted", logs.output[0])
             self.assertFalse(Attachment.objects.filter(pk=attachment.id).exists())
+
+    @override_settings(
+        EASY_ATTACHMENT_ALLOWED_TYPES=["image/png"],
+        EASY_ATTACHMENT_MAX_BYTES=1024 * 1024,
+        EASY_UPLOAD_RATE_LIMIT="1/h",
+    )
+    def test_attachment_upload_is_rate_limited(self):
+        with override_settings(MEDIA_ROOT=self.media_root):
+            self.client.force_login(self.owner)
+            first_upload = SimpleUploadedFile("first.png", b"fake-png", content_type="image/png")
+            response = self.client.post(reverse("boards:add_attachment", args=[self.first.id]), {"file": first_upload})
+            self.assertEqual(response.status_code, 302)
+
+            second_upload = SimpleUploadedFile("second.png", b"fake-png", content_type="image/png")
+            with self.assertLogs("easy.security", level="INFO") as logs:
+                response = self.client.post(
+                    reverse("boards:add_attachment", args=[self.first.id]),
+                    {"file": second_upload},
+                )
+            self.assertEqual(response.status_code, 429)
+            self.assertIn("rate_limit.exceeded", logs.output[0])
 
 
 class EasyAuthFoundationTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_auth_routes_are_available(self):
         route_names = [
             "account_signup",
@@ -265,12 +303,15 @@ class EasyAuthFoundationTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(User.objects.filter(email="new@example.com").exists())
+        self.client.post(reverse("account_logout"))
 
-        response = self.client.post(
-            reverse("account_login"),
-            {"login": "new@example.com", "password": "strong-password-12345"},
-        )
+        with self.assertLogs("easy.security", level="INFO") as logs:
+            response = self.client.post(
+                reverse("account_login"),
+                {"login": "new@example.com", "password": "strong-password-12345"},
+            )
         self.assertEqual(response.status_code, 302)
+        self.assertIn("auth.login", logs.output[0])
 
         response = self.client.post(reverse("account_logout"))
         self.assertEqual(response.status_code, 302)
@@ -290,8 +331,43 @@ class EasyAuthFoundationTests(TestCase):
             self.assertTrue(settings.SESSION_COOKIE_SECURE)
             self.assertTrue(settings.CSRF_COOKIE_SECURE)
             self.assertTrue(settings.ACCOUNT_UNIQUE_EMAIL)
+            self.assertEqual(settings.ACCOUNT_RATE_LIMITS["login_failed"], "5/5m")
+            self.assertEqual(settings.ACCOUNT_RATE_LIMITS["signup"], "10/h")
+            self.assertEqual(settings.ACCOUNT_RATE_LIMITS["password_reset"], "5/h")
+            self.assertEqual(settings.EASY_UPLOAD_RATE_LIMIT, "20/h")
 
     def test_google_provider_can_be_configured_from_environment_settings(self):
         provider = settings.SOCIALACCOUNT_PROVIDERS["google"]
         self.assertEqual(provider["SCOPE"], ["profile", "email"])
         self.assertEqual(provider["AUTH_PARAMS"], {"access_type": "online"})
+
+    def test_login_failure_is_audited(self):
+        with self.assertLogs("easy.security", level="INFO") as logs:
+            response = self.client.post(
+                reverse("account_login"),
+                {"login": "missing@example.com", "password": "wrong-password"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("auth.login_failed", "\n".join(logs.output))
+
+    def test_mfa_post_changes_are_audited_by_middleware(self):
+        user = User.objects.create_user(username="mfa", email="mfa@example.com", password="password-12345")
+        request = RequestFactory().post("/accounts/2fa/totp/activate/")
+        request.user = user
+        middleware = SecurityAuditMiddleware(lambda request: HttpResponse(status=302))
+
+        with self.assertLogs("easy.security", level="INFO") as logs:
+            response = middleware(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("mfa.changed", logs.output[0])
+
+    def test_mfa_audit_skips_failed_changes(self):
+        request = RequestFactory().post("/accounts/2fa/totp/activate/")
+        request.user = AnonymousUser()
+        middleware = SecurityAuditMiddleware(lambda request: HttpResponse(status=403))
+
+        with self.assertNoLogs("easy.security", level="INFO"):
+            response = middleware(request)
+
+        self.assertEqual(response.status_code, 403)
