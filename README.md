@@ -18,6 +18,8 @@ Easy is designed to run on self-managed infrastructure and can be served publicl
 - Rate limits for login, signup, password reset, and attachment uploads.
 - Security audit logs for login attempts, MFA/passkey changes, board membership changes, and attachment uploads/deletes.
 - Health endpoint at `/health/`.
+- Agent-friendly JSON API under `/api/v1/`.
+- Separate frontend shell under `frontend/` that consumes the API instead of Django model routes.
 
 ## MVP Boundaries
 
@@ -168,9 +170,13 @@ docker run --rm -v easy_easy_media:/media -v ${PWD}:/backup alpine sh -c "cd /me
 
 Test both database and attachment restore before relying on a public deployment.
 
-## Core Workflow API
+## Backend API And Frontend Boundary
 
-The MVP route and permission contract is documented in `docs/core-workflow-api.md`.
+Agents and standalone frontends should use the JSON API documented in `docs/agent-api.md`. The API root is `/api/v1/`, and `/api/v1/openapi.json` exposes a compact OpenAPI schema.
+
+The legacy Django template routes remain available as a compatibility UI. New frontend work belongs under `frontend/` and should use `frontend/src/api.js`.
+
+The older server-rendered route and permission contract is documented in `docs/core-workflow-api.md`.
 
 ## Verification
 

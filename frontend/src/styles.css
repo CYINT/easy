@@ -1,0 +1,47 @@
+body {
+  margin: 0;
+  color: #1f2937;
+  background: #f8fafc;
+  font-family: Arial, sans-serif;
+}
+
+main {
+  width: min(960px, calc(100% - 32px));
+  margin: 32px auto;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+button {
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 8px 12px;
+}
+
+#status {
+  margin: 16px 0;
+}
+
+article {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+article h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+article p {
+  margin: 0;
+  color: #64748b;
+}

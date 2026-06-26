@@ -276,6 +276,66 @@ class EasyBoardTests(TestCase):
             self.assertIn("rate_limit.exceeded", logs.output[0])
 
 
+class EasyApiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.owner = User.objects.create_user(username="owner", email="owner@example.com", password="password-12345")
+        self.member = User.objects.create_user(username="member", email="member@example.com", password="password-12345")
+        self.outsider = User.objects.create_user(username="outsider", email="outsider@example.com", password="password-12345")
+        self.board = Board.objects.create(name="API Launch", owner=self.owner)
+        BoardMembership.objects.create(board=self.board, user=self.member)
+        self.todo = BoardList.objects.create(board=self.board, title="Todo", position=0)
+        self.done = BoardList.objects.create(board=self.board, title="Done", position=1)
+        self.card = Card.objects.create(board_list=self.todo, title="First", position=0, created_by=self.owner)
+
+    def api(self, method, path, payload=None):
+        data = json.dumps(payload or {}) if payload is not None else None
+        return getattr(self.client, method)(path, data=data, content_type="application/json")
+
+    def test_api_requires_authentication(self):
+        response = self.client.get("/api/v1/me")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"]["code"], "authentication_required")
+
+    def test_api_board_list_detail_and_create_flow(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.get("/api/v1/boards")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["boards"][0]["name"], "API Launch")
+
+        response = self.api("post", "/api/v1/boards", {"name": "Agent Board", "description": "Created over API"})
+        self.assertEqual(response.status_code, 201)
+        board_id = response.json()["board"]["id"]
+
+        response = self.api("post", f"/api/v1/boards/{board_id}/lists", {"title": "Inbox"})
+        self.assertEqual(response.status_code, 201)
+        list_id = response.json()["list"]["id"]
+
+        response = self.api("post", f"/api/v1/lists/{list_id}/cards", {"title": "Draft contract"})
+        self.assertEqual(response.status_code, 201)
+        card_id = response.json()["card"]["id"]
+
+        response = self.client.get(f"/api/v1/boards/{board_id}")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["board"]
+        self.assertEqual(payload["name"], "Agent Board")
+        self.assertEqual(payload["lists"][0]["cards"][0]["id"], card_id)
+
+    def test_api_move_card_between_lists(self):
+        self.client.force_login(self.owner)
+        response = self.api("post", f"/api/v1/cards/{self.card.id}/move", {"listId": self.done.id, "position": 0})
+        self.assertEqual(response.status_code, 200)
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.board_list, self.done)
+        self.assertEqual(response.json()["card"]["listId"], self.done.id)
+
+    def test_api_denies_non_member_access(self):
+        self.client.force_login(self.outsider)
+        response = self.client.get(f"/api/v1/boards/{self.board.id}")
+        self.assertEqual(response.status_code, 404)
+
+
 class EasyAuthFoundationTests(TestCase):
     def setUp(self):
         cache.clear()
