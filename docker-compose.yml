@@ -15,6 +15,7 @@ services:
                export DATABASE_URL=\"postgresql://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@db:5432/$${POSTGRES_DB}\";
              fi &&
              python manage.py migrate --noinput &&
+             python manage.py bootstrap_admin &&
              python manage.py collectstatic --noinput &&
              gunicorn easy_project.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60"
     depends_on:

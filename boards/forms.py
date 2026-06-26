@@ -1,10 +1,35 @@
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from allauth.account.forms import SignupForm
 
-from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment
+from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
 
 User = get_user_model()
+
+
+class InviteSignupForm(SignupForm):
+    invite_code = forms.CharField(
+        label="Invite code",
+        max_length=96,
+        help_text="Ask your Easy administrator for an invite code.",
+    )
+
+    def clean_invite_code(self):
+        code = self.cleaned_data["invite_code"].strip()
+        if not Invitation.objects.filter(code=code, is_active=True, used_at__isnull=True, used_by__isnull=True).exists():
+            raise forms.ValidationError("This invite code is invalid or has already been used.")
+        return code
+
+    def clean(self):
+        cleaned = super().clean()
+        email = cleaned.get("email")
+        code = cleaned.get("invite_code")
+        if email and code:
+            invitation = Invitation.objects.filter(code=code).first()
+            if invitation and not invitation.can_be_used_by(email):
+                raise forms.ValidationError("This invite code is not valid for that email address.")
+        return cleaned
 
 
 class BoardForm(forms.ModelForm):

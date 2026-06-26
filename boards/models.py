@@ -1,4 +1,5 @@
 from pathlib import Path
+import secrets
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
@@ -57,6 +58,54 @@ class BoardMembership(models.Model):
 
     def __str__(self):
         return f"{self.user} on {self.board}"
+
+
+def invite_code():
+    return secrets.token_urlsafe(24)
+
+
+class Invitation(models.Model):
+    email = models.EmailField(blank=True, help_text="Optional. Leave blank for any invited email address.")
+    code = models.CharField(max_length=96, unique=True, default=invite_code)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_easy_invitations",
+    )
+    used_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="used_easy_invitations",
+    )
+    is_active = models.BooleanField(default=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["code"]),
+            models.Index(fields=["email", "is_active"]),
+        ]
+
+    def __str__(self):
+        target = self.email or "any email"
+        return f"Invitation for {target}"
+
+    @property
+    def is_used(self):
+        return self.used_at is not None or self.used_by_id is not None
+
+    def can_be_used_by(self, email):
+        if not self.is_active or self.is_used:
+            return False
+        if self.email and self.email.lower() != email.lower():
+            return False
+        return True
 
 
 class BoardList(models.Model):

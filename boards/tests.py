@@ -1,10 +1,14 @@
+import os
 import json
 import shutil
 import tempfile
+from io import StringIO
+from unittest.mock import patch
 
 from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 from django.http import HttpResponse
@@ -12,7 +16,7 @@ from django.test import RequestFactory
 from django.test import TestCase, override_settings
 from django.urls import NoReverseMatch, reverse
 
-from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment
+from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
 from .security import SecurityAuditMiddleware
 
 User = get_user_model()
@@ -296,7 +300,7 @@ class EasyAuthFoundationTests(TestCase):
         with self.assertRaises(NoReverseMatch):
             reverse("google_login")
 
-    def test_email_password_registration_login_logout_and_password_reset(self):
+    def test_email_password_registration_requires_invitation(self):
         response = self.client.post(
             reverse("account_signup"),
             {
@@ -305,8 +309,24 @@ class EasyAuthFoundationTests(TestCase):
                 "password2": "strong-password-12345",
             },
         )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+        invitation = Invitation.objects.create(email="new@example.com")
+        response = self.client.post(
+            reverse("account_signup"),
+            {
+                "email": "new@example.com",
+                "password1": "strong-password-12345",
+                "password2": "strong-password-12345",
+                "invite_code": invitation.code,
+            },
+        )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(User.objects.filter(email="new@example.com").exists())
+        user = User.objects.get(email="new@example.com")
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.used_by, user)
+        self.assertFalse(invitation.is_active)
         self.client.post(reverse("account_logout"))
 
         with self.assertLogs("easy.security", level="INFO") as logs:
@@ -322,6 +342,22 @@ class EasyAuthFoundationTests(TestCase):
 
         response = self.client.post(reverse("account_reset_password"), {"email": "new@example.com"})
         self.assertEqual(response.status_code, 302)
+
+    def test_invitation_email_binding_is_enforced(self):
+        invitation = Invitation.objects.create(email="invited@example.com")
+        response = self.client.post(
+            reverse("account_signup"),
+            {
+                "email": "other@example.com",
+                "password1": "strong-password-12345",
+                "password2": "strong-password-12345",
+                "invite_code": invitation.code,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(email="other@example.com").exists())
+        invitation.refresh_from_db()
+        self.assertIsNone(invitation.used_by)
 
     def test_auth_security_settings_are_production_safe_when_debug_is_false(self):
         with override_settings(
@@ -353,6 +389,22 @@ class EasyAuthFoundationTests(TestCase):
         provider = settings.SOCIALACCOUNT_PROVIDERS["google"]
         self.assertEqual(provider["SCOPE"], ["profile", "email"])
         self.assertEqual(provider["AUTH_PARAMS"], {"access_type": "online"})
+
+    def test_bootstrap_admin_creates_environment_defined_superuser(self):
+        stdout = StringIO()
+        env = {
+            "EASY_ADMIN_EMAIL": "admin@example.com",
+            "EASY_ADMIN_USERNAME": "admin",
+            "EASY_ADMIN_PASSWORD": "admin-password-12345",
+        }
+        with patch.dict(os.environ, env):
+            call_command("bootstrap_admin", stdout=stdout)
+
+        user = User.objects.get(email="admin@example.com")
+        self.assertEqual(user.username, "admin")
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.check_password("admin-password-12345"))
 
     def test_login_failure_is_audited(self):
         with self.assertLogs("easy.security", level="INFO") as logs:

@@ -17,6 +17,7 @@ Easy is intended to run on self-managed infrastructure. AWS is optional and shou
 ## Production Checklist
 
 - Create `.env` from `.env.example` and replace all placeholder secrets.
+- Set `EASY_ADMIN_EMAIL`, `EASY_ADMIN_USERNAME`, and `EASY_ADMIN_PASSWORD` before first startup.
 - Confirm `DJANGO_DEBUG=false`.
 - Confirm `DJANGO_ALLOWED_HOSTS` contains your deployment hostname.
 - Confirm `DJANGO_CSRF_TRUSTED_ORIGINS` contains your HTTPS deployment origin.
@@ -30,6 +31,8 @@ Easy is intended to run on self-managed infrastructure. AWS is optional and shou
 - Create the DNS record for your hostname pointing to the local ingress target.
 - Run `docker compose --profile edge up --build -d` on a host where Caddy should terminate public HTTPS, or `docker compose up --build -d` on Dan's current local bridge host.
 - Run migrations and create the first superuser if needed.
+- Confirm `python manage.py bootstrap_admin` created or updated the first administrator.
+- Confirm public signup requires a one-time administrator-created invitation code.
 - Verify `https://<your-hostname>/health/` returns `{"status":"ok","service":"easy"}`.
 
 ## Local Bridge Deployment

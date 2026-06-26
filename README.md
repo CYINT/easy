@@ -43,7 +43,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env
 .\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py createsuperuser
+.\.venv\Scripts\python.exe manage.py bootstrap_admin
 .\.venv\Scripts\python.exe manage.py runserver
 ```
 
@@ -82,6 +82,22 @@ Do not commit Google OAuth secrets or local credential files.
 MFA and passkey support are enabled through django-allauth. After signing in, use the account security pages to enroll TOTP, recovery codes, or WebAuthn/passkey credentials.
 
 The local navigation includes an `MFA and passkeys` link to `/accounts/2fa/`.
+
+## Administrator And Invitations
+
+Easy is invite-only. Public self-signup requires a one-time invite code created by an administrator in Django admin.
+
+Set these environment variables before first startup:
+
+```text
+EASY_ADMIN_EMAIL=admin@example.com
+EASY_ADMIN_USERNAME=admin
+EASY_ADMIN_PASSWORD=...
+```
+
+`python manage.py bootstrap_admin` creates or updates that account as an active staff superuser. The Docker entrypoint runs it after migrations. Do not commit the real administrator password.
+
+To invite a user, sign in at `/admin/`, create an `Invitation`, and send the generated code to the user out of band. The invite may be bound to a specific email address or left unbound. Each invite can be used once.
 
 ## Docker Deployment
 

@@ -128,6 +128,8 @@ AUTHENTICATION_BACKENDS = [
 
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_FORMS = {"signup": "boards.forms.InviteSignupForm"}
+ACCOUNT_ADAPTER = "boards.adapters.InviteOnlyAccountAdapter"
 ACCOUNT_EMAIL_VERIFICATION = os.environ.get("ACCOUNT_EMAIL_VERIFICATION", "optional")
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_UNIQUE_EMAIL = True
