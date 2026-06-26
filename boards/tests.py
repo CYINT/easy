@@ -10,7 +10,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.test import RequestFactory
 from django.test import TestCase, override_settings
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment
 from .security import SecurityAuditMiddleware
@@ -286,11 +286,15 @@ class EasyAuthFoundationTests(TestCase):
             "mfa_activate_totp",
             "mfa_view_recovery_codes",
             "mfa_add_webauthn",
-            "google_login",
         ]
         for route_name in route_names:
             with self.subTest(route_name=route_name):
                 self.assertTrue(reverse(route_name))
+
+    def test_google_login_route_is_not_enabled_by_default(self):
+        self.assertFalse(settings.EASY_ENABLE_GOOGLE_OAUTH)
+        with self.assertRaises(NoReverseMatch):
+            reverse("google_login")
 
     def test_email_password_registration_login_logout_and_password_reset(self):
         response = self.client.post(
@@ -336,7 +340,16 @@ class EasyAuthFoundationTests(TestCase):
             self.assertEqual(settings.ACCOUNT_RATE_LIMITS["password_reset"], "5/h")
             self.assertEqual(settings.EASY_UPLOAD_RATE_LIMIT, "20/h")
 
-    def test_google_provider_can_be_configured_from_environment_settings(self):
+    @override_settings(
+        EASY_ENABLE_GOOGLE_OAUTH=True,
+        SOCIALACCOUNT_PROVIDERS={
+            "google": {
+                "SCOPE": ["profile", "email"],
+                "AUTH_PARAMS": {"access_type": "online"},
+            }
+        },
+    )
+    def test_google_provider_can_be_feature_flagged_from_environment_settings(self):
         provider = settings.SOCIALACCOUNT_PROVIDERS["google"]
         self.assertEqual(provider["SCOPE"], ["profile", "email"])
         self.assertEqual(provider["AUTH_PARAMS"], {"access_type": "online"})

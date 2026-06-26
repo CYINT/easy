@@ -5,7 +5,7 @@ services:
     env_file:
       - path: ./.env
         required: false
-      - path: ${EASY_ENV_FILE:-C:/Users/Dan/.cyint/easy/easy.env}
+      - path: ${EASY_ENV_FILE:-./.env.local}
         required: false
     command: >
       sh -c "if [ -z \"$${DATABASE_URL:-}\" ]; then
@@ -33,7 +33,7 @@ services:
     env_file:
       - path: ./.env
         required: false
-      - path: ${EASY_ENV_FILE:-C:/Users/Dan/.cyint/easy/easy.env}
+      - path: ${EASY_ENV_FILE:-./.env.local}
         required: false
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-easy} -d ${POSTGRES_DB:-easy}"]
@@ -49,7 +49,7 @@ services:
     profiles:
       - edge
     environment:
-      EASY_HOSTNAME: ${EASY_HOSTNAME:-easy.kuzuryu.ai}
+      EASY_HOSTNAME: ${EASY_HOSTNAME:-localhost}
     ports:
       - "80:80"
       - "443:443"

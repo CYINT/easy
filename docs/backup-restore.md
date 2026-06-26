@@ -3,13 +3,13 @@
 ## Database Backup
 
 ```powershell
-docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env exec -T db pg_dump --clean --if-exists -U easy easy > easy-db-backup.sql
+docker compose --env-file .env exec -T db pg_dump --clean --if-exists -U easy easy > easy-db-backup.sql
 ```
 
 ## Database Restore
 
 ```powershell
-Get-Content .\easy-db-backup.sql | docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env exec -T db psql -U easy easy
+Get-Content .\easy-db-backup.sql | docker compose --env-file .env exec -T db psql -U easy easy
 ```
 
 ## Attachment Backup
@@ -26,13 +26,14 @@ docker run --rm -v easy_easy_media:/media -v ${PWD}:/backup alpine sh -c "cd /me
 
 ## Local Bridge Stack
 
-For the current `easy.kuzuryu.ai` local bridge deployment, start the restored database first, restore the SQL and media archive, then start the app:
+For a local bridge deployment, start the restored database first, restore the SQL and media archive, then start the app:
 
 ```powershell
-docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env up -d db
-Get-Content .\easy-db-backup.sql | docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env exec -T db psql -U easy easy
+$env:EASY_ENV_FILE = ".env"
+docker compose up -d db
+Get-Content .\easy-db-backup.sql | docker compose exec -T db psql -U easy easy
 docker run --rm -v easy_easy_media:/media -v ${PWD}:/backup alpine sh -c "cd /media && tar xzf /backup/easy-media-backup.tgz"
-docker compose --env-file C:\Users\Dan\.cyint\easy\easy.env up --build -d easy
+docker compose up --build -d easy
 ```
 
 ## Restore Test

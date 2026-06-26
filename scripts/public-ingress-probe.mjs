@@ -1,9 +1,13 @@
 import { spawnSync } from "node:child_process";
 import dgram from "node:dgram";
 
-const hostname = process.env.EASY_HOSTNAME || "easy.kuzuryu.ai";
+const hostname = process.env.EASY_HOSTNAME;
 const expectedLanHost = process.env.EASY_INGRESS_LAN_HOST || "192.168.0.51";
 const timeoutMs = Number(process.env.EASY_PROBE_TIMEOUT_MS || 5000);
+
+if (!hostname) {
+  throw new Error("Set EASY_HOSTNAME to the public hostname before running the public ingress probe.");
+}
 
 function run(command, args) {
   const result = spawnSync(command, args, { encoding: "utf8" });

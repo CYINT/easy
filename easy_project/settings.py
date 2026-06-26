@@ -22,7 +22,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-change-me-before-prod
 DEBUG = env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = env_list(
     "DJANGO_ALLOWED_HOSTS",
-    "localhost,127.0.0.1,0.0.0.0,easy.kuzuryu.ai",
+    "localhost,127.0.0.1,0.0.0.0",
 )
 
 INSTALLED_APPS = [
@@ -36,10 +36,13 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
-    "allauth.socialaccount.providers.google",
     "allauth.mfa",
     "boards",
 ]
+
+EASY_ENABLE_GOOGLE_OAUTH = env_bool("EASY_ENABLE_GOOGLE_OAUTH", False)
+if EASY_ENABLE_GOOGLE_OAUTH:
+    INSTALLED_APPS.append("allauth.socialaccount.providers.google")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -129,16 +132,16 @@ ACCOUNT_EMAIL_VERIFICATION = os.environ.get("ACCOUNT_EMAIL_VERIFICATION", "optio
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_UNIQUE_EMAIL = True
 
-SOCIALACCOUNT_PROVIDERS = {
-    "google": {
+SOCIALACCOUNT_PROVIDERS = {}
+if EASY_ENABLE_GOOGLE_OAUTH:
+    SOCIALACCOUNT_PROVIDERS["google"] = {
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online"},
     }
-}
 
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
 GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
-if GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET:
+if EASY_ENABLE_GOOGLE_OAUTH and GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET:
     SOCIALACCOUNT_PROVIDERS["google"]["APP"] = {
         "client_id": GOOGLE_OAUTH_CLIENT_ID,
         "secret": GOOGLE_OAUTH_CLIENT_SECRET,
@@ -157,7 +160,7 @@ EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
 )
-DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "Easy <noreply@easy.kuzuryu.ai>")
+DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "Easy <noreply@example.com>")
 
 SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
 SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", not DEBUG)
@@ -167,7 +170,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS
 SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "https://easy.kuzuryu.ai")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 X_FRAME_OPTIONS = "DENY"
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.environ.get("EASY_DATA_UPLOAD_MAX_MEMORY_SIZE", str(10 * 1024 * 1024)))

@@ -5,11 +5,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const baseUrl = process.env.EASY_LIVE_URL || "https://easy.kuzuryu.ai";
+const baseUrl = process.env.EASY_LIVE_URL || "http://127.0.0.1:18082";
 const email = process.env.EASY_TOTP_QA_EMAIL || "livetotpqa@example.com";
 const username = process.env.EASY_TOTP_QA_USERNAME || "livetotpqa";
 const password = process.env.EASY_TOTP_QA_PASSWORD || "password-12345";
-const envFile = process.env.EASY_COMPOSE_ENV || "C:\\Users\\Dan\\.cyint\\easy\\easy.env";
+const envFile = process.env.EASY_COMPOSE_ENV || ".env.local";
 
 function run(command, args) {
   const result = spawnSync(command, args, {

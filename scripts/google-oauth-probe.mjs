@@ -1,4 +1,4 @@
-const baseUrl = process.env.EASY_LIVE_URL || "https://easy.kuzuryu.ai";
+const baseUrl = process.env.EASY_LIVE_URL || "http://127.0.0.1:18082";
 
 function redactUrl(rawUrl) {
   const url = new URL(rawUrl);

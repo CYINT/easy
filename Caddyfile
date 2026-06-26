@@ -1,4 +1,4 @@
-{$EASY_HOSTNAME:easy.kuzuryu.ai} {
+{$EASY_HOSTNAME:localhost} {
   encode zstd gzip
   reverse_proxy easy:8000
 }

@@ -2,12 +2,12 @@
 
 Easy is an open-source, self-hosted team board for visual work tracking. It provides boards, lists, cards, comments, checklists, assignments, attachments, and drag-and-drop movement without plugin or automation overhead.
 
-Easy is designed to run on local infrastructure and can be served publicly behind HTTPS at `easy.kuzuryu.ai`.
+Easy is designed to run on self-managed infrastructure and can be served publicly behind HTTPS on the hostname you configure.
 
 ## Features
 
 - Email/password accounts through Django and django-allauth.
-- Google SSO through django-allauth social login.
+- Optional Google SSO through django-allauth social login.
 - MFA and passkey support through django-allauth MFA/WebAuthn.
 - Boards with owner/member access control.
 - Ordered lists and cards.
@@ -21,7 +21,7 @@ Easy is designed to run on local infrastructure and can be served publicly behin
 
 ## MVP Boundaries
 
-Included: users, boards, lists, cards, comments, images/attachments, descriptions, assignments, checklists, drag/drop, Google SSO, email/password login, MFA/passkeys, HTTPS, backup/restore documentation, and local self-hosting.
+Included: users, boards, lists, cards, comments, images/attachments, descriptions, assignments, checklists, drag/drop, email/password login, MFA/passkeys, HTTPS, backup/restore documentation, and local self-hosting. Google SSO is present as an opt-in feature flag, disabled by default.
 
 Excluded from the MVP: plugin marketplace, power features, workflow automations, billing, native mobile apps, and AWS application hosting.
 
@@ -51,17 +51,20 @@ Then open `http://127.0.0.1:8000`.
 
 ## Google SSO
 
+Google SSO is disabled by default. It has not been manually tested for a production release. Enable it only after configuring and validating a Google OAuth web client for your deployment hostname.
+
 Set these environment variables when a Google OAuth client is ready:
 
 ```text
+EASY_ENABLE_GOOGLE_OAUTH=true
 GOOGLE_OAUTH_CLIENT_ID=...
 GOOGLE_OAUTH_CLIENT_SECRET=...
 ```
 
-Recommended redirect URI:
+Redirect URI format:
 
 ```text
-https://easy.kuzuryu.ai/accounts/google/login/callback/
+https://<your-hostname>/accounts/google/login/callback/
 ```
 
 Validate the deployed OAuth client configuration with:
@@ -72,7 +75,7 @@ npm run qa:google-oauth-probe
 
 The probe must reach Google without `redirect_uri_mismatch` before the MVP release is tagged.
 
-Do not commit Google OAuth secrets. CYINT local credentials should remain outside this repository.
+Do not commit Google OAuth secrets or local credential files.
 
 ## MFA And Passkeys
 
@@ -82,9 +85,10 @@ The local navigation includes an `MFA and passkeys` link to `/accounts/2fa/`.
 
 ## Docker Deployment
 
-Dan's local bridge host reads secrets from `C:\Users\Dan\.cyint\easy\easy.env` by default:
+Create a local env file before starting the stack:
 
 ```powershell
+Copy-Item .env.example .env
 docker compose up --build -d
 ```
 
@@ -110,7 +114,7 @@ docker compose --profile edge up --build -d
 
 ## DNS And HTTPS
 
-For `easy.kuzuryu.ai`, create an AWS Route 53 record pointing to the selected local ingress target. AWS is used for DNS only.
+Create a DNS record for your configured hostname pointing to the selected ingress target. If you use AWS Route 53, Easy only needs DNS records there; it does not require AWS application hosting.
 
 Caddy terminates HTTPS and automatically manages certificates only when the `edge` profile is enabled and the hostname is publicly reachable on ports `80`/`443`.
 
