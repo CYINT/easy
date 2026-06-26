@@ -18,7 +18,7 @@ Easy is designed to run on self-managed infrastructure and can be served publicl
 - Rate limits for login, signup, password reset, and attachment uploads.
 - Security audit logs for login attempts, MFA/passkey changes, board membership changes, and attachment uploads/deletes.
 - Health endpoint at `/health/`.
-- Agent-friendly JSON API under `/api/v1/`.
+- Agent-friendly JSON API under `/api/v1/` with bearer-token support.
 - Separate frontend shell under `frontend/` that consumes the API instead of Django model routes.
 
 ## MVP Boundaries
@@ -173,6 +173,14 @@ Test both database and attachment restore before relying on a public deployment.
 ## Backend API And Frontend Boundary
 
 Agents and standalone frontends should use the JSON API documented in `docs/agent-api.md`. The API root is `/api/v1/`, and `/api/v1/openapi.json` exposes a compact OpenAPI schema.
+
+Programmatic agents can use bearer tokens generated for existing users:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py create_agent_token admin@example.com --name local-agent
+```
+
+The raw token is shown once and stored only as a hash. Revoke tokens in Django admin by disabling the token.
 
 The legacy Django template routes remain available as a compatibility UI. New frontend work belongs under `frontend/` and should use `frontend/src/api.js`.
 

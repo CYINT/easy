@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
+from .models import AgentToken, Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
 
 
 class BoardMembershipInline(admin.TabularInline):
@@ -51,3 +51,11 @@ class InvitationAdmin(admin.ModelAdmin):
         if not obj.created_by_id:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(AgentToken)
+class AgentTokenAdmin(admin.ModelAdmin):
+    list_display = ["name", "user", "token_prefix", "is_active", "expires_at", "last_used_at", "created_at"]
+    list_filter = ["is_active", "expires_at", "created_at"]
+    search_fields = ["name", "user__email", "user__username", "token_prefix"]
+    readonly_fields = ["token_hash", "token_prefix", "last_used_at", "created_at"]

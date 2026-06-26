@@ -16,7 +16,7 @@ from django.test import RequestFactory
 from django.test import TestCase, override_settings
 from django.urls import NoReverseMatch, reverse
 
-from .models import Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
+from .models import AgentToken, Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
 from .security import SecurityAuditMiddleware
 
 User = get_user_model()
@@ -334,6 +334,33 @@ class EasyApiTests(TestCase):
         self.client.force_login(self.outsider)
         response = self.client.get(f"/api/v1/boards/{self.board.id}")
         self.assertEqual(response.status_code, 404)
+
+    def test_api_accepts_agent_bearer_token(self):
+        raw_token, token = AgentToken.create_token(self.owner, "test-agent")
+
+        response = self.client.get("/api/v1/me", HTTP_AUTHORIZATION=f"Bearer {raw_token}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["email"], self.owner.email)
+
+        response = self.api_with_token("post", "/api/v1/boards", raw_token, {"name": "Token Board"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["board"]["owner"]["email"], self.owner.email)
+        token.refresh_from_db()
+        self.assertIsNotNone(token.last_used_at)
+
+    def test_api_rejects_invalid_agent_bearer_token(self):
+        response = self.client.get("/api/v1/me", HTTP_AUTHORIZATION="Bearer easy_invalid")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"]["code"], "authentication_required")
+
+    def api_with_token(self, method, path, token, payload=None):
+        data = json.dumps(payload or {}) if payload is not None else None
+        return getattr(self.client, method)(
+            path,
+            data=data,
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
 
 
 class EasyAuthFoundationTests(TestCase):

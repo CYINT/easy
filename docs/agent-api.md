@@ -4,11 +4,18 @@ Easy exposes a session-authenticated JSON API under `/api/v1/`. This API is the 
 
 ## Authentication
 
-- Browser clients use the Django `sessionid` cookie.
-- Unsafe requests must include `X-CSRFToken`.
+- Programmatic agents should use an `Authorization: Bearer <token>` header.
+- Browser clients may use the Django `sessionid` cookie.
+- Unsafe browser-session requests must include `X-CSRFToken`.
 - Invite-only signup, login, MFA, password reset, and administrator bootstrap are still handled by django-allauth and Django admin.
 
-Programmatic agents should authenticate through an approved session or a future API-token flow. Do not scrape Django templates.
+Create a token for an existing active user with:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py create_agent_token user@example.com --name local-agent
+```
+
+The raw token is shown once. Easy stores only a SHA-256 hash and a short prefix. Revoke tokens from Django admin by setting `is_active` to false. Do not scrape Django templates.
 
 ## Discovery
 

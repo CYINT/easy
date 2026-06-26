@@ -19,6 +19,10 @@ def _json_error(message, status=400, code="bad_request"):
 
 
 def _require_auth(request):
+    token_user = getattr(request, "easy_api_user", None)
+    if token_user is not None:
+        request.user = token_user
+        return None
     if not request.user.is_authenticated:
         return _json_error("Authentication required.", status=401, code="authentication_required")
     return None
@@ -162,6 +166,7 @@ def openapi_schema(request):
             },
             "components": {
                 "securitySchemes": {
+                    "bearerToken": {"type": "http", "scheme": "bearer"},
                     "sessionCookie": {"type": "apiKey", "in": "cookie", "name": "sessionid"},
                     "csrfToken": {"type": "apiKey", "in": "header", "name": "X-CSRFToken"},
                 }

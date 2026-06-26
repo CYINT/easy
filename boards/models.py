@@ -1,10 +1,13 @@
 from pathlib import Path
+import hashlib
+import hmac
 import secrets
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 from django.urls import reverse
 
 User = get_user_model()
@@ -106,6 +109,50 @@ class Invitation(models.Model):
         if self.email and self.email.lower() != email.lower():
             return False
         return True
+
+
+class AgentToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="easy_agent_tokens")
+    name = models.CharField(max_length=120)
+    token_hash = models.CharField(max_length=64, unique=True)
+    token_prefix = models.CharField(max_length=16, db_index=True)
+    is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["user__email", "name"]
+        indexes = [
+            models.Index(fields=["token_prefix", "is_active"]),
+            models.Index(fields=["user", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} for {self.user}"
+
+    @staticmethod
+    def hash_token(raw_token):
+        return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def create_token(cls, user, name, expires_at=None):
+        raw_token = f"easy_{secrets.token_urlsafe(32)}"
+        token = cls.objects.create(
+            user=user,
+            name=name,
+            token_hash=cls.hash_token(raw_token),
+            token_prefix=raw_token[:12],
+            expires_at=expires_at,
+        )
+        return raw_token, token
+
+    def matches(self, raw_token):
+        return hmac.compare_digest(self.token_hash, self.hash_token(raw_token))
+
+    @property
+    def is_expired(self):
+        return bool(self.expires_at and self.expires_at <= timezone.now())
 
 
 class BoardList(models.Model):
