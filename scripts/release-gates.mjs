@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 
 const hostname = process.env.EASY_RELEASE_HOSTNAME || process.env.EASY_HOSTNAME;
@@ -7,6 +8,7 @@ const privateBetaAccepted = process.env.EASY_RELEASE_PRIVATE_BETA_ACCEPTED === "
 const googleOAuthEnabled = process.env.EASY_ENABLE_GOOGLE_OAUTH === "true";
 const googleOAuthTested = process.env.EASY_RELEASE_GOOGLE_OAUTH_TESTED === "true";
 const skipTlsVerify = process.env.EASY_RELEASE_SKIP_TLS_VERIFY === "true";
+const releaseNotesPath = process.env.EASY_RELEASE_NOTES_PATH || "";
 
 const failures = [];
 const evidence = {};
@@ -143,10 +145,48 @@ function checkPublicIngress() {
   }
 }
 
+function checkPrivateBetaReleaseNotes() {
+  evidence.releaseNotesPath = releaseNotesPath || null;
+  if (!privateBetaAccepted) return;
+
+  if (!releaseNotesPath) {
+    failures.push("set EASY_RELEASE_NOTES_PATH to release notes that record the accepted private-beta access boundary");
+    return;
+  }
+
+  if (!existsSync(releaseNotesPath)) {
+    failures.push(`release notes file does not exist: ${releaseNotesPath}`);
+    return;
+  }
+
+  const notes = readFileSync(releaseNotesPath, "utf8").toLowerCase();
+  const mentionsPrivateBeta = notes.includes("private beta");
+  const mentionsBoundary =
+    notes.includes("private network") ||
+    notes.includes("private-network") ||
+    notes.includes("dragonscale") ||
+    notes.includes("tunnel");
+  const avoidsPublicClaim =
+    notes.includes("not publicly reachable") ||
+    notes.includes("not publicly internet reachable") ||
+    notes.includes("do not describe this release as publicly internet reachable");
+
+  evidence.releaseNotes = {
+    privateBeta: mentionsPrivateBeta,
+    accessBoundary: mentionsBoundary,
+    avoidsPublicClaim,
+  };
+
+  if (!mentionsPrivateBeta || !mentionsBoundary || !avoidsPublicClaim) {
+    failures.push("private-beta release notes must state private beta status, access boundary, and no-public-reachability claim");
+  }
+}
+
 checkGitCleanAndPushed();
 checkGoogleOAuthPosture();
 checkLiveSmoke();
 checkPublicIngress();
+checkPrivateBetaReleaseNotes();
 
 console.log(JSON.stringify({ ok: failures.length === 0, failures, evidence }, null, 2));
 

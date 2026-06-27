@@ -157,6 +157,8 @@ The guarded tag helper runs the same gates and defaults to a dry run:
 npm run release:tag -- v0.1.0 --dry-run
 ```
 
+For an explicitly accepted private beta, set `EASY_RELEASE_NOTES_PATH` to release notes that state the private-network or tunnel access boundary.
+
 ## Backups
 
 PostgreSQL backup:

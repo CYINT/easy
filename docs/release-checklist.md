@@ -48,6 +48,12 @@ npm run qa:release-gates
 
 The gate fails unless public HTTPS ingress is verified. For an explicitly accepted private beta, set `EASY_RELEASE_PRIVATE_BETA_ACCEPTED=true` and keep the release notes clear that access is private-network or tunnel limited.
 
+Private-beta releases must also provide release notes that record the accepted access boundary:
+
+```powershell
+$env:EASY_RELEASE_NOTES_PATH="docs/release-notes/v0.1.0-private-beta.md"
+```
+
 ## Tagging
 
 After all applicable gates pass, dry-run the tag command:
