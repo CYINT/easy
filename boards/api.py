@@ -4,12 +4,21 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
-from .forms import BoardForm, BoardListForm, CardForm, CardUpdateForm, CommentForm
-from .models import Board, BoardMembership, Card
+from .forms import BoardForm, BoardListForm, CardForm, CardUpdateForm, ChecklistForm, ChecklistItemForm, ChecklistItemUpdateForm, CommentForm
+from .models import Board, BoardMembership, Card, Checklist, ChecklistItem
 from .security import audit_event
-from .views import _board_queryset, _get_board_for_user, _get_card_for_user, _get_list_for_user, _next_position, _normalize_cards
+from .views import (
+    _board_queryset,
+    _get_board_for_user,
+    _get_card_for_user,
+    _get_list_for_user,
+    _next_position,
+    _normalize_cards,
+    _normalize_checklist_items,
+)
 
 User = get_user_model()
 
@@ -96,6 +105,7 @@ def _card_payload(card):
         "position": card.position,
         "assignees": [_user_payload(user) for user in card.assignees.all()],
         "createdBy": _user_payload(card.created_by) if card.created_by else None,
+        "checklists": [_checklist_payload(checklist, include_items=True) for checklist in card.checklists.all()],
         "createdAt": card.created_at.isoformat(),
         "updatedAt": card.updated_at.isoformat(),
     }
@@ -109,6 +119,42 @@ def _comment_payload(comment):
         "author": _user_payload(comment.author),
         "createdAt": comment.created_at.isoformat(),
     }
+
+
+def _checklist_payload(checklist, include_items=False):
+    payload = {
+        "id": checklist.id,
+        "cardId": checklist.card_id,
+        "title": checklist.title,
+        "position": checklist.position,
+        "createdAt": checklist.created_at.isoformat(),
+    }
+    if include_items:
+        payload["items"] = [_checklist_item_payload(item) for item in checklist.items.all()]
+    return payload
+
+
+def _checklist_item_payload(item):
+    return {
+        "id": item.id,
+        "checklistId": item.checklist_id,
+        "text": item.text,
+        "isDone": item.is_done,
+        "position": item.position,
+        "createdAt": item.created_at.isoformat(),
+    }
+
+
+def _get_checklist_for_user(checklist_id, user):
+    checklist = get_object_or_404(Checklist.objects.select_related("card"), pk=checklist_id)
+    _get_card_for_user(checklist.card_id, user)
+    return checklist
+
+
+def _get_checklist_item_for_user(item_id, user):
+    item = get_object_or_404(ChecklistItem.objects.select_related("checklist", "checklist__card"), pk=item_id)
+    _get_card_for_user(item.checklist.card_id, user)
+    return item
 
 
 def _user_can_manage_board(board, user):
@@ -163,6 +209,17 @@ def openapi_schema(request):
                 },
                 "/api/v1/cards/{cardId}/move": {"post": {"summary": "Move a card to another position or list."}},
                 "/api/v1/cards/{cardId}/comments": {"post": {"summary": "Add a comment to a card."}},
+                "/api/v1/cards/{cardId}/checklists": {"post": {"summary": "Add a checklist to a card."}},
+                "/api/v1/checklists/{checklistId}": {
+                    "patch": {"summary": "Update a checklist title."},
+                    "delete": {"summary": "Delete a checklist."},
+                },
+                "/api/v1/checklists/{checklistId}/items": {"post": {"summary": "Add a checklist item."}},
+                "/api/v1/checklist-items/{itemId}": {
+                    "patch": {"summary": "Update checklist item text, position, or done state."},
+                    "delete": {"summary": "Delete a checklist item."},
+                },
+                "/api/v1/checklist-items/{itemId}/toggle": {"post": {"summary": "Toggle checklist item completion."}},
             },
             "components": {
                 "securitySchemes": {
@@ -218,7 +275,12 @@ def board_detail(request, board_id):
         board = (
             Board.objects.filter(pk=board.pk)
             .select_related("owner")
-            .prefetch_related("memberships__user", "lists__cards__assignees", "lists__cards__created_by")
+            .prefetch_related(
+                "memberships__user",
+                "lists__cards__assignees",
+                "lists__cards__created_by",
+                "lists__cards__checklists__items",
+            )
             .get()
         )
         return JsonResponse({"board": _board_payload(board, include_lists=True)})
@@ -366,6 +428,117 @@ def card_comments(request, card_id):
     comment.author = request.user
     comment.save()
     return JsonResponse({"comment": _comment_payload(comment)}, status=201)
+
+
+@require_http_methods(["POST"])
+def card_checklists(request, card_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    card = _get_card_for_user(card_id, request.user)
+    try:
+        data = _payload(request)
+    except ValueError as error:
+        return _json_error(str(error))
+    form = ChecklistForm({"title": data.get("title", "")})
+    if not form.is_valid():
+        return _json_error("Checklist title is required.", status=422, code="validation_error")
+    checklist = form.save(commit=False)
+    checklist.card = card
+    checklist.position = _next_position(card.checklists)
+    checklist.save()
+    return JsonResponse({"checklist": _checklist_payload(checklist, include_items=True)}, status=201)
+
+
+@require_http_methods(["PATCH", "DELETE"])
+def checklist_detail(request, checklist_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    checklist = _get_checklist_for_user(checklist_id, request.user)
+
+    if request.method == "DELETE":
+        checklist.delete()
+        return JsonResponse({}, status=204)
+
+    try:
+        data = _payload(request)
+    except ValueError as error:
+        return _json_error(str(error))
+    form = ChecklistForm({"title": data.get("title", checklist.title)}, instance=checklist)
+    if not form.is_valid():
+        return _json_error("Checklist title is required.", status=422, code="validation_error")
+    form.save()
+    return JsonResponse({"checklist": _checklist_payload(checklist, include_items=True)})
+
+
+@require_http_methods(["POST"])
+def checklist_items(request, checklist_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    checklist = _get_checklist_for_user(checklist_id, request.user)
+    try:
+        data = _payload(request)
+    except ValueError as error:
+        return _json_error(str(error))
+    form = ChecklistItemForm({"text": data.get("text", "")})
+    if not form.is_valid():
+        return _json_error("Checklist item text is required.", status=422, code="validation_error")
+    item = form.save(commit=False)
+    item.checklist = checklist
+    item.position = _next_position(checklist.items)
+    item.save()
+    return JsonResponse({"item": _checklist_item_payload(item)}, status=201)
+
+
+@require_http_methods(["PATCH", "DELETE"])
+@transaction.atomic
+def checklist_item_detail(request, item_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    item = _get_checklist_item_for_user(item_id, request.user)
+    checklist = item.checklist
+
+    if request.method == "DELETE":
+        item.delete()
+        _normalize_checklist_items(checklist)
+        return JsonResponse({}, status=204)
+
+    try:
+        data = _payload(request)
+    except ValueError as error:
+        return _json_error(str(error))
+    form = ChecklistItemUpdateForm(
+        {"text": data.get("text", item.text), "position": data.get("position", item.position)},
+        instance=item,
+    )
+    if not form.is_valid():
+        return _json_error("Checklist item update is invalid.", status=422, code="validation_error")
+    item = form.save(commit=False)
+    if "isDone" in data:
+        item.is_done = bool(data["isDone"])
+    siblings = list(checklist.items.exclude(pk=item.pk).order_by("position", "created_at"))
+    position = max(0, min(item.position, len(siblings)))
+    siblings.insert(position, item)
+    item.save()
+    for index, sibling in enumerate(siblings):
+        if sibling.position != index:
+            ChecklistItem.objects.filter(pk=sibling.pk).update(position=index)
+    item.refresh_from_db()
+    return JsonResponse({"item": _checklist_item_payload(item)})
+
+
+@require_http_methods(["POST"])
+def toggle_checklist_item(request, item_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    item = _get_checklist_item_for_user(item_id, request.user)
+    item.is_done = not item.is_done
+    item.save(update_fields=["is_done"])
+    return JsonResponse({"item": _checklist_item_payload(item)})
 
 
 @require_http_methods(["POST"])

@@ -40,6 +40,18 @@ The raw token is shown once. Easy stores only a SHA-256 hash and a short prefix.
 - `DELETE /api/v1/cards/{cardId}`
 - `POST /api/v1/cards/{cardId}/move` with `{ "listId": 123, "position": 0 }`
 
+## Checklists
+
+Card and board-detail payloads include nested `checklists` and `items`.
+
+- `POST /api/v1/cards/{cardId}/checklists` with `{ "title": "..." }`
+- `PATCH /api/v1/checklists/{checklistId}` with `{ "title": "..." }`
+- `DELETE /api/v1/checklists/{checklistId}`
+- `POST /api/v1/checklists/{checklistId}/items` with `{ "text": "..." }`
+- `PATCH /api/v1/checklist-items/{itemId}` with `{ "text": "...", "position": 0, "isDone": true }`
+- `DELETE /api/v1/checklist-items/{itemId}`
+- `POST /api/v1/checklist-items/{itemId}/toggle`
+
 ## Collaboration
 
 - `POST /api/v1/boards/{boardId}/members` with `{ "email": "user@example.com", "role": "member" }`

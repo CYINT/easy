@@ -330,6 +330,52 @@ class EasyApiTests(TestCase):
         self.assertEqual(self.card.board_list, self.done)
         self.assertEqual(response.json()["card"]["listId"], self.done.id)
 
+    def test_api_checklist_flow(self):
+        self.client.force_login(self.owner)
+
+        response = self.api("post", f"/api/v1/cards/{self.card.id}/checklists", {"title": "Ship"})
+        self.assertEqual(response.status_code, 201)
+        checklist_id = response.json()["checklist"]["id"]
+
+        response = self.api("post", f"/api/v1/checklists/{checklist_id}/items", {"text": "Write docs"})
+        self.assertEqual(response.status_code, 201)
+        first_item_id = response.json()["item"]["id"]
+
+        response = self.api("post", f"/api/v1/checklists/{checklist_id}/items", {"text": "Run tests"})
+        self.assertEqual(response.status_code, 201)
+        second_item_id = response.json()["item"]["id"]
+
+        response = self.api(
+            "patch",
+            f"/api/v1/checklist-items/{second_item_id}",
+            {"text": "Run full tests", "position": 0, "isDone": True},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["item"]["position"], 0)
+        self.assertTrue(response.json()["item"]["isDone"])
+
+        response = self.api("post", f"/api/v1/checklist-items/{first_item_id}/toggle", {})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["item"]["isDone"])
+
+        response = self.api("patch", f"/api/v1/checklists/{checklist_id}", {"title": "Ship MVP"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["checklist"]["title"], "Ship MVP")
+
+        response = self.client.get(f"/api/v1/boards/{self.board.id}")
+        self.assertEqual(response.status_code, 200)
+        checklists = response.json()["board"]["lists"][0]["cards"][0]["checklists"]
+        self.assertEqual(checklists[0]["title"], "Ship MVP")
+        self.assertEqual(checklists[0]["items"][0]["text"], "Run full tests")
+
+        response = self.api("delete", f"/api/v1/checklist-items/{first_item_id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(ChecklistItem.objects.filter(pk=first_item_id).exists())
+
+        response = self.api("delete", f"/api/v1/checklists/{checklist_id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Checklist.objects.filter(pk=checklist_id).exists())
+
     def test_api_denies_non_member_access(self):
         self.client.force_login(self.outsider)
         response = self.client.get(f"/api/v1/boards/{self.board.id}")
