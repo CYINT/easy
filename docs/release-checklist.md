@@ -27,7 +27,7 @@ Use this checklist before creating a public release tag.
 
 Before a public internet release, choose and verify one accepted ingress posture:
 
-- Public HTTPS: WAN ports `80` and `443` route only to the Easy HTTPS edge for the configured hostname.
+- Public HTTPS: WAN ports `80` and `443` route only to the Easy HTTPS edge for the configured hostname, or the hostname has a verified public AAAA record that serves Easy HTTPS directly.
 - Explicit private beta: the release notes state that access is limited to the approved private network or tunnel, and the decision owner accepts that the hostname is not publicly reachable.
 
 Run:
@@ -37,7 +37,7 @@ $env:EASY_HOSTNAME="<your-hostname>"
 npm run qa:public-ingress-probe
 ```
 
-For a public HTTPS release, the probe must show that WAN `443` reaches the Easy hostname.
+For a public HTTPS release, the probe must show that WAN `443` reaches the Easy hostname or that a DNS-published IPv6 address serves Easy HTTPS.
 
 For a private beta release, record the accepted access boundary in the release notes and do not describe the deployment as publicly reachable.
 

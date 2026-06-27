@@ -258,7 +258,7 @@ function checkPublicIngress() {
     return;
   }
 
-  const publicHttpsOk = Boolean(parsed?.wanHealth?.ok);
+  const publicHttpsOk = Boolean(parsed?.wanHealth?.ok || parsed?.ipv6Health?.ok);
   evidence.publicHttpsOk = publicHttpsOk;
   evidence.privateBetaAccepted = privateBetaAccepted;
 

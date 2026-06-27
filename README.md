@@ -136,7 +136,7 @@ Before creating a public release tag, complete the release checklist in `docs/re
 
 Create a DNS record for your configured hostname pointing to the selected ingress target. If you use AWS Route 53, Easy only needs DNS records there; it does not require AWS application hosting.
 
-Caddy terminates HTTPS and automatically manages certificates only when the `edge` profile is enabled and the hostname is publicly reachable on ports `80`/`443`.
+Caddy terminates HTTPS and automatically manages certificates only when the `edge` profile is enabled and the hostname is publicly reachable on ports `80`/`443`. A deployment may also satisfy public ingress with a DNS-published AAAA record when the host's IPv6 address serves HTTPS directly.
 
 Check the current public-ingress posture with:
 

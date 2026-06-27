@@ -32,6 +32,7 @@ Complete `docs/release-checklist.md` before creating a public release tag.
 - Confirm `EASY_UPLOAD_RATE_LIMIT` is set for expected public traffic.
 - Confirm the `easy.security` logger is collected by the host log retention path.
 - Create the DNS record for your hostname pointing to the local ingress target.
+- For IPv6 public ingress, create an AAAA record for the hostname only after the host HTTPS bridge listens on IPv6 and firewall exposure has been reviewed.
 - Run `docker compose --profile edge up --build -d` on a host where Caddy should terminate public HTTPS, or `docker compose up --build -d` on Dan's current local bridge host.
 - Run migrations and create the first superuser if needed.
 - Confirm `python manage.py bootstrap_admin` created or updated the first administrator.
@@ -69,6 +70,7 @@ Before go-live, select the concrete public ingress pattern:
 
 - static WAN IP with router port forwarding to the Easy host;
 - dynamic DNS target that Route 53 can track; or
+- DNS-published IPv6 routed directly to the Easy HTTPS bridge; or
 - a non-AWS tunnel/reverse-proxy route terminating at the Easy host.
 
 Use `npm run qa:public-ingress-probe` to check whether WAN `443` reaches the Easy hostname and whether a local UPnP gateway exposes an existing `443` mapping.

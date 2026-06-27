@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
 import dgram from "node:dgram";
+import { resolve6 } from "node:dns/promises";
+import os from "node:os";
 
 const hostname = process.env.EASY_HOSTNAME;
 const expectedLanHost = process.env.EASY_INGRESS_LAN_HOST || "192.168.0.51";
@@ -18,15 +20,29 @@ function run(command, args) {
   };
 }
 
+function commandExists(command) {
+  const probe = process.platform === "win32" ? run("where.exe", [command]) : run("which", [command]);
+  return probe.status === 0;
+}
+
+function curlCommand() {
+  if (process.platform === "win32" && commandExists("curl.exe")) return "curl.exe";
+  return "curl";
+}
+
+function curlResolveArg(address) {
+  return address.includes(":") ? `${hostname}:443:[${address}]` : `${hostname}:443:${address}`;
+}
+
 function curlWanHealth(wanIp) {
-  const result = run("curl.exe", [
+  const result = run(curlCommand(), [
     "-sS",
     "--connect-timeout",
     "5",
     "--resolve",
-    `${hostname}:443:${wanIp}`,
+    curlResolveArg(wanIp),
     "-o",
-    "NUL",
+    os.devNull,
     "-w",
     "%{http_code} %{ssl_verify_result} %{remote_ip}",
     `https://${hostname}/health/`,
@@ -34,6 +50,54 @@ function curlWanHealth(wanIp) {
   return {
     ok: result.status === 0 && result.stdout.startsWith("200 "),
     output: result.stdout || result.stderr,
+  };
+}
+
+async function checkIpv6Health() {
+  let addresses = [];
+  let resolution = "system";
+  try {
+    addresses = await resolve6(hostname);
+  } catch (error) {
+    resolution = "dns.google";
+    try {
+      const response = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=AAAA`).then((item) =>
+        item.json(),
+      );
+      addresses = [
+        ...new Set((response.Answer || []).filter((answer) => answer.type === 28).map((answer) => answer.data)),
+      ];
+      if (addresses.length === 0) {
+        return {
+          addresses,
+          resolution,
+          error: error.code || error.message,
+          dnsResponseStatus: response.Status,
+          checks: [],
+          ok: false,
+        };
+      }
+    } catch (fallbackError) {
+      return {
+        addresses,
+        resolution,
+        error: fallbackError.message || error.code || error.message,
+        checks: [],
+        ok: false,
+      };
+    }
+  }
+
+  const checks = addresses.map((address) => ({
+    address,
+    health: curlWanHealth(address),
+  }));
+
+  return {
+    addresses,
+    resolution,
+    checks,
+    ok: checks.some((check) => check.health.ok),
   };
 }
 
@@ -120,6 +184,7 @@ async function soap(service, action, body) {
 async function main() {
   const publicIp = await fetch("https://api.ipify.org").then((response) => response.text());
   const wanHealth = curlWanHealth(publicIp);
+  const ipv6Health = await checkIpv6Health();
   const locations = await discoverGateway();
   const services = [];
 
@@ -159,6 +224,7 @@ async function main() {
         expectedLanHost,
         publicIp,
         wanHealth,
+        ipv6Health,
         upnpLocations: locations,
         upnpServices: services,
       },
