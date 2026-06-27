@@ -9,6 +9,7 @@ const googleOAuthEnabled = process.env.EASY_ENABLE_GOOGLE_OAUTH === "true";
 const googleOAuthTested = process.env.EASY_RELEASE_GOOGLE_OAUTH_TESTED === "true";
 const skipTlsVerify = process.env.EASY_RELEASE_SKIP_TLS_VERIFY === "true";
 const releaseNotesPath = process.env.EASY_RELEASE_NOTES_PATH || "";
+const skipCiCheck = process.env.EASY_RELEASE_SKIP_CI_CHECK === "true";
 
 const failures = [];
 const evidence = {};
@@ -61,6 +62,77 @@ function checkGitCleanAndPushed() {
   evidence.gitHead = head.stdout;
   evidence.originMain = remoteSha;
   if (head.stdout !== remoteSha) failures.push("local HEAD does not match origin/main");
+}
+
+function checkCiStatus() {
+  evidence.ciCheckSkipped = skipCiCheck;
+  if (skipCiCheck) return;
+
+  if (!evidence.gitHead) {
+    failures.push("cannot check CI status before git HEAD is available");
+    return;
+  }
+
+  if (!commandExists("gh")) {
+    failures.push("GitHub CLI is required for CI verification, or set EASY_RELEASE_SKIP_CI_CHECK=true with an accepted exception");
+    return;
+  }
+
+  const result = run("gh", [
+    "run",
+    "list",
+    "--repo",
+    "CYINT/easy",
+    "--branch",
+    "main",
+    "--limit",
+    "20",
+    "--json",
+    "databaseId,headSha,status,conclusion,name,url,createdAt",
+  ]);
+  if (result.status !== 0) {
+    failures.push(`failed to read GitHub Actions runs: ${result.stderr || result.error}`);
+    return;
+  }
+
+  let runs = [];
+  try {
+    runs = JSON.parse(result.stdout);
+  } catch {
+    failures.push("GitHub Actions run list did not return parseable JSON");
+    return;
+  }
+
+  const matchingRun = runs.find(
+    (runItem) =>
+      runItem.headSha === evidence.gitHead &&
+      runItem.name === "CI" &&
+      runItem.status === "completed" &&
+      runItem.conclusion === "success",
+  );
+
+  evidence.ci = matchingRun
+    ? {
+        ok: true,
+        runId: matchingRun.databaseId,
+        url: matchingRun.url,
+        createdAt: matchingRun.createdAt,
+        headSha: matchingRun.headSha,
+      }
+    : {
+        ok: false,
+        checkedRuns: runs.map((runItem) => ({
+          runId: runItem.databaseId,
+          headSha: runItem.headSha,
+          status: runItem.status,
+          conclusion: runItem.conclusion,
+          name: runItem.name,
+        })),
+      };
+
+  if (!matchingRun) {
+    failures.push("no successful completed GitHub Actions CI run found for current HEAD");
+  }
 }
 
 function checkGoogleOAuthPosture() {
@@ -183,6 +255,7 @@ function checkPrivateBetaReleaseNotes() {
 }
 
 checkGitCleanAndPushed();
+checkCiStatus();
 checkGoogleOAuthPosture();
 checkLiveSmoke();
 checkPublicIngress();

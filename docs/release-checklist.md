@@ -48,6 +48,8 @@ npm run qa:release-gates
 
 The gate fails unless public HTTPS ingress is verified. For an explicitly accepted private beta, set `EASY_RELEASE_PRIVATE_BETA_ACCEPTED=true` and keep the release notes clear that access is private-network or tunnel limited.
 
+The gate also verifies a successful GitHub Actions CI run for the exact commit being tagged. If GitHub CLI access is unavailable, set `EASY_RELEASE_SKIP_CI_CHECK=true` only with an accepted release exception.
+
 Private-beta releases must also provide release notes that record the accepted access boundary:
 
 ```powershell

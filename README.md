@@ -151,6 +151,8 @@ $env:EASY_RELEASE_HOSTNAME="<your-hostname>"
 npm run qa:release-gates
 ```
 
+The release gate verifies that GitHub Actions CI passed on the exact commit being tagged.
+
 The guarded tag helper runs the same gates and defaults to a dry run:
 
 ```powershell
