@@ -57,6 +57,14 @@ export function addBoardMember(boardId, data) {
   return apiFetch(`/boards/${boardId}/members`, { method: "POST", body: JSON.stringify(data) });
 }
 
+export function updateMembership(membershipId, data) {
+  return apiFetch(`/memberships/${membershipId}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export function deleteMembership(membershipId) {
+  return apiFetch(`/memberships/${membershipId}`, { method: "DELETE" });
+}
+
 export function createCard(listId, data) {
   return apiFetch(`/lists/${listId}/cards`, { method: "POST", body: JSON.stringify(data) });
 }

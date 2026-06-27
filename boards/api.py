@@ -211,6 +211,12 @@ def _get_comment_for_user(comment_id, user):
     return comment
 
 
+def _get_membership_for_user(membership_id, user):
+    membership = get_object_or_404(BoardMembership.objects.select_related("board", "user"), pk=membership_id)
+    _get_board_for_user(membership.board_id, user)
+    return membership
+
+
 def _user_can_manage_board(board, user):
     if board.owner_id == user.id:
         return True
@@ -255,6 +261,10 @@ def openapi_schema(request):
                 },
                 "/api/v1/boards/{boardId}/lists": {"post": {"summary": "Create a list on a board."}},
                 "/api/v1/boards/{boardId}/members": {"post": {"summary": "Add or update a board member."}},
+                "/api/v1/memberships/{membershipId}": {
+                    "patch": {"summary": "Update a board member role."},
+                    "delete": {"summary": "Remove a board member."},
+                },
                 "/api/v1/lists/{listId}/cards": {"post": {"summary": "Create a card on a list."}},
                 "/api/v1/cards/{cardId}": {
                     "get": {"summary": "Return a card."},
@@ -709,4 +719,37 @@ def board_members(request, board_id):
         return _json_error("The board owner already has access.", status=409, code="owner_already_member")
     membership, _ = BoardMembership.objects.update_or_create(board=board, user=user, defaults={"role": role})
     audit_event("board_member.saved", request=request, board_id=board.id, member_user_id=user.id, role=role)
+    return JsonResponse({"membership": _membership_payload(membership)})
+
+
+@require_http_methods(["PATCH", "DELETE"])
+@transaction.atomic
+def membership_detail(request, membership_id):
+    error = _require_auth_and_scope(request)
+    if error:
+        return error
+    membership = _get_membership_for_user(membership_id, request.user)
+    board = membership.board
+    if not _user_can_manage_board(board, request.user):
+        return _json_error("Only board managers can update members.", status=403, code="permission_denied")
+
+    if request.method == "DELETE":
+        member_user_id = membership.user_id
+        role = membership.role
+        for card in Card.objects.filter(board_list__board=board, assignees=membership.user):
+            card.assignees.remove(membership.user)
+        membership.delete()
+        audit_event("board_member.removed", request=request, board_id=board.id, member_user_id=member_user_id, role=role)
+        return JsonResponse({}, status=204)
+
+    try:
+        data = _payload(request)
+    except ValueError as error:
+        return _json_error(str(error))
+    role = data.get("role", membership.role)
+    if role not in {BoardMembership.ROLE_MEMBER, BoardMembership.ROLE_ADMIN}:
+        return _json_error("Invalid board role.", status=422, code="validation_error")
+    membership.role = role
+    membership.save(update_fields=["role"])
+    audit_event("board_member.saved", request=request, board_id=board.id, member_user_id=membership.user_id, role=role)
     return JsonResponse({"membership": _membership_payload(membership)})

@@ -66,6 +66,8 @@ Card and board-detail payloads include nested `checklists` and `items`.
 ## Collaboration
 
 - `POST /api/v1/boards/{boardId}/members` with `{ "email": "user@example.com", "role": "member" }`
+- `PATCH /api/v1/memberships/{membershipId}` with `{ "role": "admin" }`
+- `DELETE /api/v1/memberships/{membershipId}`
 - `POST /api/v1/cards/{cardId}/comments` with `{ "body": "..." }`
 - `DELETE /api/v1/comments/{commentId}`
 

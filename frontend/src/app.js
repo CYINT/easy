@@ -8,11 +8,13 @@ import {
   createList,
   currentUser,
   deleteComment,
+  deleteMembership,
   getBoard,
   listBoards,
   moveCard,
   toggleChecklistItem,
   updateCard,
+  updateMembership,
   uploadAttachment,
 } from "./api.js";
 
@@ -173,9 +175,30 @@ function renderMemberForm() {
 function renderMembers() {
   return el("div", { className: "members", "aria-label": "Board members" }, [
     el("span", { text: `Owner: ${userLabel(state.board.owner)}` }),
-    ...(state.board.members ?? []).map((membership) => (
-      el("span", { text: `${userLabel(membership.user)} (${membership.role})` })
-    )),
+    ...(state.board.members ?? []).map(renderMembership),
+  ]);
+}
+
+function renderMembership(membership) {
+  const role = el("select", { "aria-label": `Role for ${userLabel(membership.user)}` }, [
+    el("option", { value: "member", text: "Member", selected: membership.role === "member" ? "selected" : null }),
+    el("option", { value: "admin", text: "Admin", selected: membership.role === "admin" ? "selected" : null }),
+  ]);
+  role.addEventListener("change", () => run(async () => {
+    await updateMembership(membership.id, { role: role.value });
+    await loadBoard(state.board.id);
+  }, "Member role saved."));
+  return el("span", { className: "member-pill" }, [
+    el("span", { text: userLabel(membership.user) }),
+    role,
+    el("button", {
+      type: "button",
+      text: "Remove",
+      onclick: () => run(async () => {
+        await deleteMembership(membership.id);
+        await loadBoard(state.board.id);
+      }, "Member removed."),
+    }),
   ]);
 }
 

@@ -118,13 +118,28 @@ a {
   margin-bottom: 14px;
 }
 
-.members span,
+.members > span,
 .assignee-options label {
   border: 1px solid #d6dbe1;
   border-radius: 6px;
   background: #ffffff;
   color: #4d5965;
   padding: 5px 8px;
+}
+
+.member-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-pill select {
+  width: 92px;
+}
+
+.member-pill button {
+  min-height: 28px;
+  padding: 3px 7px;
 }
 
 .assignee-options label {

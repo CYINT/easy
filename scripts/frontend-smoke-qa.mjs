@@ -101,6 +101,7 @@ async function main() {
       });
       await page.route("**/api/v1/boards/1", (route) => route.fulfill({ json: { board } }));
       await page.route("**/api/v1/boards/1/members", (route) => route.fulfill({ status: 200, json: { membership: board.members[0] } }));
+      await page.route("**/api/v1/memberships/30", (route) => route.fulfill({ status: route.request().method() === "DELETE" ? 204 : 200, json: { membership: board.members[0] } }));
       await page.route("**/api/v1/boards/1/lists", (route) => route.fulfill({ status: 201, json: { list: { id: 12, title: "Later" } } }));
       await page.route("**/api/v1/lists/10/cards", (route) => route.fulfill({ status: 201, json: { card: { id: 101, title: "New card" } } }));
       await page.route("**/api/v1/cards/100", (route) => route.fulfill({ json: { card: board.lists[0].cards[0] } }));
@@ -113,6 +114,7 @@ async function main() {
       await page.waitForSelector("text=Release board");
       await page.waitForSelector("text=Wire frontend");
       await page.waitForSelector("text=member@example.com");
+      await page.waitForSelector("text=Remove");
       await page.waitForSelector("text=Ready for review");
       await page.waitForSelector("text=spec.txt");
       const metrics = await page.evaluate(() => ({

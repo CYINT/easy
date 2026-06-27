@@ -342,6 +342,7 @@ class EasyApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["membership"]["user"]["email"], self.outsider.email)
         self.assertEqual(response.json()["membership"]["role"], "admin")
+        membership_id = response.json()["membership"]["id"]
 
         response = self.api("patch", f"/api/v1/cards/{self.card.id}", {"assigneeIds": [self.member.id, self.outsider.id]})
         self.assertEqual(response.status_code, 200)
@@ -355,6 +356,21 @@ class EasyApiTests(TestCase):
             [user["email"] for user in payload["lists"][0]["cards"][0]["assignees"]],
             [self.member.email, self.outsider.email],
         )
+
+        self.client.force_login(self.member)
+        response = self.api("patch", f"/api/v1/memberships/{membership_id}", {"role": "member"})
+        self.assertEqual(response.status_code, 403)
+
+        self.client.force_login(self.owner)
+        response = self.api("patch", f"/api/v1/memberships/{membership_id}", {"role": "member"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["membership"]["role"], "member")
+
+        response = self.api("delete", f"/api/v1/memberships/{membership_id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(BoardMembership.objects.filter(pk=membership_id).exists())
+        self.card.refresh_from_db()
+        self.assertEqual(list(self.card.assignees.all()), [self.member])
 
     def test_api_checklist_flow(self):
         self.client.force_login(self.owner)

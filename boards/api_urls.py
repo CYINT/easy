@@ -12,6 +12,7 @@ urlpatterns = [
     path("boards/<int:board_id>", api.board_detail, name="board_detail"),
     path("boards/<int:board_id>/lists", api.board_lists, name="board_lists"),
     path("boards/<int:board_id>/members", api.board_members, name="board_members"),
+    path("memberships/<int:membership_id>", api.membership_detail, name="membership_detail"),
     path("lists/<int:list_id>/cards", api.list_cards, name="list_cards"),
     path("cards/<int:card_id>", api.card_detail, name="card_detail"),
     path("cards/<int:card_id>/move", api.move_card, name="move_card"),
