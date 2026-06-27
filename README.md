@@ -144,6 +144,13 @@ Check the current public-ingress posture with:
 npm run qa:public-ingress-probe
 ```
 
+Check all release gates before tagging with:
+
+```powershell
+$env:EASY_RELEASE_HOSTNAME="<your-hostname>"
+npm run qa:release-gates
+```
+
 ## Backups
 
 PostgreSQL backup:

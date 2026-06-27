@@ -9,7 +9,8 @@
     "qa:dragdrop": "node scripts/dragdrop-qa.mjs",
     "qa:frontend": "node scripts/frontend-smoke-qa.mjs",
     "qa:google-oauth-probe": "node scripts/google-oauth-probe.mjs",
-    "qa:public-ingress-probe": "node scripts/public-ingress-probe.mjs"
+    "qa:public-ingress-probe": "node scripts/public-ingress-probe.mjs",
+    "qa:release-gates": "node scripts/release-gates.mjs"
   },
   "devDependencies": {
     "playwright": "^1.57.0"
