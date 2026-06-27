@@ -114,7 +114,7 @@ function checkPublicIngress() {
     return;
   }
 
-  const probe = run("npm", ["run", "qa:public-ingress-probe"], {
+  const probe = run(process.execPath, ["scripts/public-ingress-probe.mjs"], {
     env: { ...process.env, EASY_HOSTNAME: hostname },
   });
   evidence.publicIngressProbe = {
