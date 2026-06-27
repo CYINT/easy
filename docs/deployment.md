@@ -16,6 +16,8 @@ Easy is intended to run on self-managed infrastructure. AWS is optional and shou
 
 ## Production Checklist
 
+Complete `docs/release-checklist.md` before creating a public release tag.
+
 - Create `.env` from `.env.example` and replace all placeholder secrets.
 - Set `EASY_ADMIN_EMAIL`, `EASY_ADMIN_USERNAME`, and `EASY_ADMIN_PASSWORD` before first startup.
 - Confirm `DJANGO_DEBUG=false`.

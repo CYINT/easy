@@ -130,6 +130,8 @@ To run Caddy as the HTTPS edge on a host where public ports `80` and `443` route
 docker compose --profile edge up --build -d
 ```
 
+Before creating a public release tag, complete the release checklist in `docs/release-checklist.md`.
+
 ## DNS And HTTPS
 
 Create a DNS record for your configured hostname pointing to the selected ingress target. If you use AWS Route 53, Easy only needs DNS records there; it does not require AWS application hosting.
