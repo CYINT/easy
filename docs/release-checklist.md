@@ -8,6 +8,7 @@ Use this checklist before creating a public release tag.
 - Confirm public CI is passing on the exact commit to be tagged.
 - Confirm no credentials, local `.env` files, database dumps, uploaded media, OAuth secrets, or backup archives are committed.
 - Confirm `DJANGO_DEBUG=false` and production cookie/security settings are active in the deployment environment.
+- Confirm `EASY_RELEASE_COMMIT` is set to the exact deployed Git SHA and `/health/` reports that value.
 - Confirm `EASY_ENABLE_GOOGLE_OAUTH=false` unless Google OAuth is explicitly in release scope.
 - If Google OAuth is enabled, confirm `npm run qa:google-oauth-probe` passes for the deployed hostname without `redirect_uri_mismatch`.
 - Confirm Google OAuth remains documented as not manually tested if it is not part of the release.
@@ -49,7 +50,7 @@ npm run qa:release-gates
 
 The gate fails unless public HTTPS ingress is verified. For an explicitly accepted private beta, set `EASY_RELEASE_PRIVATE_BETA_ACCEPTED=true` and keep the release notes clear that access is private-network or tunnel limited.
 
-The gate also verifies a successful GitHub Actions CI run for the exact commit being tagged. If GitHub CLI access is unavailable, set `EASY_RELEASE_SKIP_CI_CHECK=true` only with an accepted release exception.
+The gate also verifies a successful GitHub Actions CI run for the exact commit being tagged and checks that the deployed `/health/` `release.commit` matches the same commit. If GitHub CLI access is unavailable, set `EASY_RELEASE_SKIP_CI_CHECK=true` only with an accepted release exception. If deployment metadata cannot be exposed, set `EASY_RELEASE_SKIP_DEPLOYED_COMMIT_CHECK=true` only with an accepted release exception.
 
 Private-beta releases must also provide release notes that record the accepted access boundary:
 

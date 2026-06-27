@@ -24,6 +24,8 @@ ALLOWED_HOSTS = env_list(
     "DJANGO_ALLOWED_HOSTS",
     "localhost,127.0.0.1,0.0.0.0",
 )
+EASY_RELEASE_VERSION = os.environ.get("EASY_RELEASE_VERSION", "0.1.0")
+EASY_RELEASE_COMMIT = os.environ.get("EASY_RELEASE_COMMIT", "unknown")
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -152,6 +152,7 @@ npm run qa:release-gates
 ```
 
 The release gate verifies that GitHub Actions CI passed on the exact commit being tagged.
+It also verifies that `/health/` exposes `release.commit` for the deployed app and that the value matches the commit being tagged. Set `EASY_RELEASE_COMMIT` to the deployed Git SHA when starting the stack.
 
 The guarded tag helper runs the same gates and defaults to a dry run:
 

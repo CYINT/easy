@@ -23,6 +23,7 @@ Complete `docs/release-checklist.md` before creating a public release tag.
 - Confirm `DJANGO_DEBUG=false`.
 - Confirm `DJANGO_ALLOWED_HOSTS` contains your deployment hostname.
 - Confirm `DJANGO_CSRF_TRUSTED_ORIGINS` contains your HTTPS deployment origin.
+- Set `EASY_RELEASE_VERSION` and `EASY_RELEASE_COMMIT` so health checks identify the deployed build.
 - Confirm only ports `80` and `443` are publicly exposed.
 - Confirm PostgreSQL is not publicly exposed.
 - Leave `EASY_ENABLE_GOOGLE_OAUTH=false` unless you are explicitly releasing Google SSO.
@@ -35,7 +36,7 @@ Complete `docs/release-checklist.md` before creating a public release tag.
 - Run migrations and create the first superuser if needed.
 - Confirm `python manage.py bootstrap_admin` created or updated the first administrator.
 - Confirm public signup requires a one-time administrator-created invitation code.
-- Verify `https://<your-hostname>/health/` returns `{"status":"ok","service":"easy"}`.
+- Verify `https://<your-hostname>/health/` returns `{"status":"ok","service":"easy","release":{"version":"...","commit":"..."}}`.
 - For existing deployments, follow `docs/upgrade.md` and keep pre-upgrade database/media backups outside Git.
 
 ## Local Bridge Deployment

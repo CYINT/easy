@@ -28,6 +28,7 @@ from .views import (
     _next_position,
     _normalize_cards,
     _normalize_checklist_items,
+    _release_payload,
 )
 
 User = get_user_model()
@@ -229,6 +230,7 @@ def api_root(request):
         {
             "service": "easy",
             "version": "v1",
+            "release": _release_payload(),
             "links": {
                 "me": "/api/v1/me",
                 "boards": "/api/v1/boards",

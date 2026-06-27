@@ -8,6 +8,7 @@ Use this guide when updating an existing self-hosted Easy deployment.
 - Confirm the target commit or tag is from `https://github.com/CYINT/easy`.
 - Confirm GitHub Actions CI passed for the exact commit or tag.
 - Confirm the deployment environment still sets production-safe values such as `DJANGO_DEBUG=false`, secure cookies, allowed hosts, CSRF trusted origins, and administrator bootstrap variables.
+- Set `EASY_RELEASE_COMMIT` to the target Git SHA before rebuilding so release gates can prove the live deployment matches the target.
 - Confirm `EASY_ENABLE_GOOGLE_OAUTH=false` unless Google OAuth is explicitly in release scope and has been validated.
 - Create fresh database and media backups before pulling or rebuilding.
 

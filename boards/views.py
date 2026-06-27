@@ -2,6 +2,7 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Q
@@ -74,9 +75,16 @@ def _next_position(queryset):
     return queryset.count()
 
 
+def _release_payload():
+    return {
+        "version": settings.EASY_RELEASE_VERSION,
+        "commit": settings.EASY_RELEASE_COMMIT,
+    }
+
+
 @require_GET
 def health(request):
-    return JsonResponse({"status": "ok", "service": "easy"})
+    return JsonResponse({"status": "ok", "service": "easy", "release": _release_payload()})
 
 
 def home(request):

@@ -48,6 +48,19 @@ class EasyBoardTests(TestCase):
         response = self.client.get(reverse("boards:board_detail", args=[self.board.id]))
         self.assertEqual(response.status_code, 404)
 
+    @override_settings(EASY_RELEASE_VERSION="0.1.0-test", EASY_RELEASE_COMMIT="abc123")
+    def test_health_reports_release_metadata(self):
+        response = self.client.get(reverse("boards:health"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "ok",
+                "service": "easy",
+                "release": {"version": "0.1.0-test", "commit": "abc123"},
+            },
+        )
+
     def test_create_list_and_card(self):
         self.client.force_login(self.owner)
         response = self.client.post(reverse("boards:create_list", args=[self.board.id]), {"title": "Doing"})
@@ -300,6 +313,15 @@ class EasyApiTests(TestCase):
         response = self.client.get("/api/v1/me")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["error"]["code"], "authentication_required")
+
+    @override_settings(EASY_RELEASE_VERSION="0.1.0-test", EASY_RELEASE_COMMIT="abc123")
+    def test_api_root_reports_release_metadata(self):
+        response = self.client.get("/api/v1/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["service"], "easy")
+        self.assertEqual(payload["version"], "v1")
+        self.assertEqual(payload["release"], {"version": "0.1.0-test", "commit": "abc123"})
 
     def test_api_board_list_detail_and_create_flow(self):
         self.client.force_login(self.owner)

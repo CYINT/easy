@@ -10,6 +10,7 @@ const googleOAuthTested = process.env.EASY_RELEASE_GOOGLE_OAUTH_TESTED === "true
 const skipTlsVerify = process.env.EASY_RELEASE_SKIP_TLS_VERIFY === "true";
 const releaseNotesPath = process.env.EASY_RELEASE_NOTES_PATH || "";
 const skipCiCheck = process.env.EASY_RELEASE_SKIP_CI_CHECK === "true";
+const skipDeployedCommitCheck = process.env.EASY_RELEASE_SKIP_DEPLOYED_COMMIT_CHECK === "true";
 
 const failures = [];
 const evidence = {};
@@ -164,6 +165,24 @@ function checkLiveEndpoint(path) {
   };
 }
 
+function fetchLiveJson(path) {
+  const curl = curlCommand();
+  const args = ["-sS", "--connect-timeout", "10"];
+  if (skipTlsVerify) args.unshift("-k");
+  args.push(`${baseUrl}${path}`);
+
+  const result = run(curl, args);
+  if (result.status !== 0) {
+    return { ok: false, error: result.stderr || result.error || result.stdout };
+  }
+
+  try {
+    return { ok: true, body: JSON.parse(result.stdout) };
+  } catch {
+    return { ok: false, error: "response was not parseable JSON", raw: result.stdout };
+  }
+}
+
 function checkLiveSmoke() {
   if (!baseUrl) {
     failures.push("set EASY_RELEASE_HOSTNAME or EASY_RELEASE_BASE_URL before running release gates");
@@ -179,6 +198,39 @@ function checkLiveSmoke() {
 
   for (const [name, result] of Object.entries(evidence.live)) {
     if (!result.ok) failures.push(`${name} endpoint did not return HTTP 200 with valid TLS: ${result.output}`);
+  }
+}
+
+function checkDeployedRelease() {
+  evidence.deployedCommitCheckSkipped = skipDeployedCommitCheck;
+  if (skipDeployedCommitCheck) return;
+
+  if (!baseUrl) {
+    failures.push("set EASY_RELEASE_HOSTNAME or EASY_RELEASE_BASE_URL before checking deployed release metadata");
+    return;
+  }
+
+  if (!evidence.gitHead) {
+    failures.push("cannot check deployed release commit before git HEAD is available");
+    return;
+  }
+
+  const result = fetchLiveJson("/health/");
+  evidence.deployedRelease = result.ok ? result.body.release || null : { error: result.error, raw: result.raw };
+  const deployedCommit = result.ok ? result.body.release?.commit : "";
+
+  if (!result.ok) {
+    failures.push(`health endpoint did not return release metadata JSON: ${result.error}`);
+    return;
+  }
+
+  if (!deployedCommit || deployedCommit === "unknown") {
+    failures.push("health endpoint release.commit is missing or unknown");
+    return;
+  }
+
+  if (deployedCommit !== evidence.gitHead) {
+    failures.push(`deployed Easy release commit ${deployedCommit} does not match current HEAD ${evidence.gitHead}`);
   }
 }
 
@@ -258,6 +310,7 @@ checkGitCleanAndPushed();
 checkCiStatus();
 checkGoogleOAuthPosture();
 checkLiveSmoke();
+checkDeployedRelease();
 checkPublicIngress();
 checkPrivateBetaReleaseNotes();
 
