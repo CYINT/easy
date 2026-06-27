@@ -9,13 +9,24 @@ Easy exposes a session-authenticated JSON API under `/api/v1/`. This API is the 
 - Unsafe browser-session requests must include `X-CSRFToken`.
 - Invite-only signup, login, MFA, password reset, and administrator bootstrap are still handled by django-allauth and Django admin.
 
-Create a token for an existing active user with:
+Create a read-only token for an existing active user with:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py create_agent_token user@example.com --name local-agent
 ```
 
+Create a write-capable token only when an agent needs to mutate boards:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py create_agent_token user@example.com --name local-agent --scope write
+```
+
 The raw token is shown once. Easy stores only a SHA-256 hash and a short prefix. Revoke tokens from Django admin by setting `is_active` to false. Do not scrape Django templates.
+
+Token scopes:
+
+- `read`: safe `GET` API requests only.
+- `write`: read plus mutation requests, still limited by the owning user's board permissions.
 
 ## Discovery
 

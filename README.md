@@ -174,13 +174,13 @@ Test both database and attachment restore before relying on a public deployment.
 
 Agents and standalone frontends should use the JSON API documented in `docs/agent-api.md`. The API root is `/api/v1/`, and `/api/v1/openapi.json` exposes a compact OpenAPI schema.
 
-Programmatic agents can use bearer tokens generated for existing users:
+Programmatic agents can use scoped bearer tokens generated for existing users. Read-only is the default:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py create_agent_token admin@example.com --name local-agent
 ```
 
-The raw token is shown once and stored only as a hash. Revoke tokens in Django admin by disabling the token.
+Use `--scope write` only when an agent needs to mutate boards. The raw token is shown once and stored only as a hash. Revoke tokens in Django admin by disabling the token.
 
 The legacy Django template routes remain available as a compatibility UI. New frontend work belongs under `frontend/` and should use `frontend/src/api.js`.
 

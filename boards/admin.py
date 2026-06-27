@@ -55,7 +55,7 @@ class InvitationAdmin(admin.ModelAdmin):
 
 @admin.register(AgentToken)
 class AgentTokenAdmin(admin.ModelAdmin):
-    list_display = ["name", "user", "token_prefix", "is_active", "expires_at", "last_used_at", "created_at"]
-    list_filter = ["is_active", "expires_at", "created_at"]
+    list_display = ["name", "user", "scope", "token_prefix", "is_active", "expires_at", "last_used_at", "created_at"]
+    list_filter = ["scope", "is_active", "expires_at", "created_at"]
     search_fields = ["name", "user__email", "user__username", "token_prefix"]
     readonly_fields = ["token_hash", "token_prefix", "last_used_at", "created_at"]

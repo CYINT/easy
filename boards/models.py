@@ -112,8 +112,13 @@ class Invitation(models.Model):
 
 
 class AgentToken(models.Model):
+    SCOPE_READ = "read"
+    SCOPE_WRITE = "write"
+    SCOPE_CHOICES = [(SCOPE_READ, "Read"), (SCOPE_WRITE, "Write")]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="easy_agent_tokens")
     name = models.CharField(max_length=120)
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default=SCOPE_READ)
     token_hash = models.CharField(max_length=64, unique=True)
     token_prefix = models.CharField(max_length=16, db_index=True)
     is_active = models.BooleanField(default=True)
@@ -136,11 +141,12 @@ class AgentToken(models.Model):
         return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
     @classmethod
-    def create_token(cls, user, name, expires_at=None):
+    def create_token(cls, user, name, expires_at=None, scope=SCOPE_READ):
         raw_token = f"easy_{secrets.token_urlsafe(32)}"
         token = cls.objects.create(
             user=user,
             name=name,
+            scope=scope,
             token_hash=cls.hash_token(raw_token),
             token_prefix=raw_token[:12],
             expires_at=expires_at,

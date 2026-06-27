@@ -47,6 +47,22 @@ def _require_auth(request):
     return None
 
 
+def _require_write_scope(request):
+    token = getattr(request, "easy_agent_token", None)
+    if token is not None and token.scope != token.SCOPE_WRITE:
+        return _json_error("This agent token is read-only.", status=403, code="insufficient_scope")
+    return None
+
+
+def _require_auth_and_scope(request):
+    error = _require_auth(request)
+    if error:
+        return error
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        return _require_write_scope(request)
+    return None
+
+
 def _payload(request):
     if not request.body:
         return {}
@@ -271,7 +287,7 @@ def openapi_schema(request):
 
 @require_http_methods(["GET"])
 def me(request):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     return JsonResponse({"user": _user_payload(request.user)})
@@ -279,7 +295,7 @@ def me(request):
 
 @require_http_methods(["GET", "POST"])
 def boards(request):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
 
@@ -303,7 +319,7 @@ def boards(request):
 
 @require_http_methods(["GET", "PATCH", "DELETE"])
 def board_detail(request, board_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     board = _get_board_for_user(board_id, request.user)
@@ -344,7 +360,7 @@ def board_detail(request, board_id):
 
 @require_http_methods(["POST"])
 def board_lists(request, board_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     board = _get_board_for_user(board_id, request.user)
@@ -364,7 +380,7 @@ def board_lists(request, board_id):
 
 @require_http_methods(["POST"])
 def list_cards(request, list_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     board_list = _get_list_for_user(list_id, request.user)
@@ -385,7 +401,7 @@ def list_cards(request, list_id):
 
 @require_http_methods(["GET", "PATCH", "DELETE"])
 def card_detail(request, card_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     card = _get_card_for_user(card_id, request.user)
@@ -419,7 +435,7 @@ def card_detail(request, card_id):
 @require_http_methods(["POST"])
 @transaction.atomic
 def move_card(request, card_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     card = _get_card_for_user(card_id, request.user)
@@ -450,7 +466,7 @@ def move_card(request, card_id):
 
 @require_http_methods(["POST"])
 def card_comments(request, card_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     card = _get_card_for_user(card_id, request.user)
@@ -470,7 +486,7 @@ def card_comments(request, card_id):
 
 @require_http_methods(["POST"])
 def card_checklists(request, card_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     card = _get_card_for_user(card_id, request.user)
@@ -490,7 +506,7 @@ def card_checklists(request, card_id):
 
 @require_http_methods(["PATCH", "DELETE"])
 def checklist_detail(request, checklist_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     checklist = _get_checklist_for_user(checklist_id, request.user)
@@ -512,7 +528,7 @@ def checklist_detail(request, checklist_id):
 
 @require_http_methods(["POST"])
 def checklist_items(request, checklist_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     checklist = _get_checklist_for_user(checklist_id, request.user)
@@ -533,7 +549,7 @@ def checklist_items(request, checklist_id):
 @require_http_methods(["PATCH", "DELETE"])
 @transaction.atomic
 def checklist_item_detail(request, item_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     item = _get_checklist_item_for_user(item_id, request.user)
@@ -570,7 +586,7 @@ def checklist_item_detail(request, item_id):
 
 @require_http_methods(["POST"])
 def toggle_checklist_item(request, item_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     item = _get_checklist_item_for_user(item_id, request.user)
@@ -582,7 +598,7 @@ def toggle_checklist_item(request, item_id):
 @require_http_methods(["POST"])
 @rate_limit("attachment_upload", "EASY_UPLOAD_RATE_LIMIT")
 def card_attachments(request, card_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     card = _get_card_for_user(card_id, request.user)
@@ -612,7 +628,7 @@ def card_attachments(request, card_id):
 
 @require_http_methods(["GET", "DELETE"])
 def attachment_detail(request, attachment_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     attachment = _get_attachment_for_user(attachment_id, request.user)
@@ -637,7 +653,7 @@ def attachment_detail(request, attachment_id):
 
 @require_http_methods(["GET"])
 def attachment_download(request, attachment_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     attachment = _get_attachment_for_user(attachment_id, request.user)
@@ -651,7 +667,7 @@ def attachment_download(request, attachment_id):
 
 @require_http_methods(["POST"])
 def board_members(request, board_id):
-    error = _require_auth(request)
+    error = _require_auth_and_scope(request)
     if error:
         return error
     board = _get_board_for_user(board_id, request.user)

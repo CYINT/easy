@@ -13,6 +13,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("user", help="User email or username.")
         parser.add_argument("--name", default="agent", help="Human-readable token name.")
+        parser.add_argument("--scope", choices=[AgentToken.SCOPE_READ, AgentToken.SCOPE_WRITE], default=AgentToken.SCOPE_READ)
         parser.add_argument("--expires-days", type=int, default=90, help="Token lifetime in days. Use 0 for no expiry.")
 
     def handle(self, *args, **options):
@@ -26,9 +27,14 @@ class Command(BaseCommand):
 
         expires_days = options["expires_days"]
         expires_at = None if expires_days == 0 else timezone.now() + timedelta(days=expires_days)
-        raw_token, token = AgentToken.create_token(user=user, name=options["name"].strip() or "agent", expires_at=expires_at)
+        raw_token, token = AgentToken.create_token(
+            user=user,
+            name=options["name"].strip() or "agent",
+            expires_at=expires_at,
+            scope=options["scope"],
+        )
 
-        self.stdout.write(self.style.SUCCESS(f"Created Easy agent token {token.id} for {user.email or user.username}."))
+        self.stdout.write(self.style.SUCCESS(f"Created Easy {token.scope} agent token {token.id} for {user.email or user.username}."))
         if expires_at:
             self.stdout.write(f"Expires at: {expires_at.isoformat()}")
         self.stdout.write("Copy this token now. It is stored only as a hash and cannot be shown again.")

@@ -421,7 +421,7 @@ class EasyApiTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_api_accepts_agent_bearer_token(self):
-        raw_token, token = AgentToken.create_token(self.owner, "test-agent")
+        raw_token, token = AgentToken.create_token(self.owner, "test-agent", scope=AgentToken.SCOPE_WRITE)
 
         response = self.client.get("/api/v1/me", HTTP_AUTHORIZATION=f"Bearer {raw_token}")
         self.assertEqual(response.status_code, 200)
@@ -432,6 +432,17 @@ class EasyApiTests(TestCase):
         self.assertEqual(response.json()["board"]["owner"]["email"], self.owner.email)
         token.refresh_from_db()
         self.assertIsNotNone(token.last_used_at)
+
+    def test_api_enforces_read_only_agent_token_scope(self):
+        raw_token, _ = AgentToken.create_token(self.owner, "read-agent", scope=AgentToken.SCOPE_READ)
+
+        response = self.client.get("/api/v1/boards", HTTP_AUTHORIZATION=f"Bearer {raw_token}")
+        self.assertEqual(response.status_code, 200)
+
+        response = self.api_with_token("post", "/api/v1/boards", raw_token, {"name": "Denied Board"})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"]["code"], "insufficient_scope")
+        self.assertFalse(Board.objects.filter(name="Denied Board").exists())
 
     def test_api_rejects_invalid_agent_bearer_token(self):
         response = self.client.get("/api/v1/me", HTTP_AUTHORIZATION="Bearer easy_invalid")
