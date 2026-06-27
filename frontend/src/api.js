@@ -49,8 +49,24 @@ export function createBoard(data) {
   return apiFetch("/boards", { method: "POST", body: JSON.stringify(data) });
 }
 
+export function updateBoard(boardId, data) {
+  return apiFetch(`/boards/${boardId}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export function deleteBoard(boardId) {
+  return apiFetch(`/boards/${boardId}`, { method: "DELETE" });
+}
+
 export function createList(boardId, data) {
   return apiFetch(`/boards/${boardId}/lists`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function updateList(listId, data) {
+  return apiFetch(`/lists/${listId}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export function deleteList(listId) {
+  return apiFetch(`/lists/${listId}`, { method: "DELETE" });
 }
 
 export function addBoardMember(boardId, data) {
@@ -71,6 +87,10 @@ export function createCard(listId, data) {
 
 export function updateCard(cardId, data) {
   return apiFetch(`/cards/${cardId}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export function deleteCard(cardId) {
+  return apiFetch(`/cards/${cardId}`, { method: "DELETE" });
 }
 
 export function moveCard(cardId, data) {

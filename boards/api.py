@@ -260,6 +260,10 @@ def openapi_schema(request):
                     "delete": {"summary": "Delete a board owned by the current user."},
                 },
                 "/api/v1/boards/{boardId}/lists": {"post": {"summary": "Create a list on a board."}},
+                "/api/v1/lists/{listId}": {
+                    "patch": {"summary": "Update a list title."},
+                    "delete": {"summary": "Delete a list and its cards."},
+                },
                 "/api/v1/boards/{boardId}/members": {"post": {"summary": "Add or update a board member."}},
                 "/api/v1/memberships/{membershipId}": {
                     "patch": {"summary": "Update a board member role."},
@@ -395,6 +399,30 @@ def board_lists(request, board_id):
     board_list.position = _next_position(board.lists)
     board_list.save()
     return JsonResponse({"list": _list_payload(board_list)}, status=201)
+
+
+@require_http_methods(["PATCH", "DELETE"])
+def list_detail(request, list_id):
+    error = _require_auth_and_scope(request)
+    if error:
+        return error
+    board_list = _get_list_for_user(list_id, request.user)
+    if not _user_can_manage_board(board_list.board, request.user):
+        return _json_error("Only board managers can update lists.", status=403, code="permission_denied")
+
+    if request.method == "DELETE":
+        board_list.delete()
+        return JsonResponse({}, status=204)
+
+    try:
+        data = _payload(request)
+    except ValueError as error:
+        return _json_error(str(error))
+    form = BoardListForm({"title": data.get("title", board_list.title)}, instance=board_list)
+    if not form.is_valid():
+        return _json_error("List title is required.", status=422, code="validation_error")
+    form.save()
+    return JsonResponse({"list": _list_payload(board_list)})
 
 
 @require_http_methods(["POST"])

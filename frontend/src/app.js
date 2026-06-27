@@ -7,13 +7,18 @@ import {
   createComment,
   createList,
   currentUser,
+  deleteBoard,
+  deleteCard,
   deleteComment,
+  deleteList,
   deleteMembership,
   getBoard,
   listBoards,
   moveCard,
   toggleChecklistItem,
+  updateBoard,
   updateCard,
+  updateList,
   updateMembership,
   uploadAttachment,
 } from "./api.js";
@@ -139,6 +144,7 @@ function renderBoard() {
         el("p", { text: state.board.description || "No description" }),
       ]),
       el("div", { className: "workspace-tools" }, [
+        renderBoardSettings(),
         form("New list", "Add list", (title) => run(async () => {
           await createList(state.board.id, { title });
           await loadBoard(state.board.id);
@@ -148,6 +154,38 @@ function renderBoard() {
     ]),
     renderMembers(),
     el("div", { className: "lists" }, state.board.lists.map(renderList)),
+  ]);
+}
+
+function renderBoardSettings() {
+  const name = el("input", { value: state.board.name, "aria-label": "Board name" });
+  const description = el("input", { value: state.board.description, placeholder: "Board description", "aria-label": "Board description" });
+  return el("form", {
+    className: "inline-form board-settings",
+    onsubmit: (event) => {
+      event.preventDefault();
+      run(async () => {
+        await updateBoard(state.board.id, { name: name.value.trim(), description: description.value.trim() });
+        await loadBoard(state.board.id);
+      }, "Board saved.");
+    },
+  }, [
+    name,
+    description,
+    el("button", { type: "submit", text: "Save board" }),
+    el("button", {
+      type: "button",
+      text: "Delete board",
+      onclick: () => {
+        if (!window.confirm("Delete this board?")) return;
+        run(async () => {
+          await deleteBoard(state.board.id);
+          state.board = null;
+          state.selectedCardId = null;
+          await refreshBoards();
+        }, "Board deleted.");
+      },
+    }),
   ]);
 }
 
@@ -205,7 +243,7 @@ function renderMembership(membership) {
 function renderList(list, index) {
   return el("section", { className: "lane" }, [
     el("header", { className: "lane-header" }, [
-      el("h2", { text: list.title }),
+      renderListTitleForm(list),
       el("span", { text: `${list.cards.length}` }),
     ]),
     el("div", { className: "cards" }, list.cards.map((card, cardIndex) => renderCard(card, list, index, cardIndex))),
@@ -213,6 +251,34 @@ function renderList(list, index) {
       await createCard(list.id, { title });
       await loadBoard(state.board.id);
     }, "Card added.")),
+  ]);
+}
+
+function renderListTitleForm(list) {
+  const title = el("input", { value: list.title, "aria-label": `List title: ${list.title}` });
+  return el("form", {
+    className: "list-title-form",
+    onsubmit: (event) => {
+      event.preventDefault();
+      run(async () => {
+        await updateList(list.id, { title: title.value.trim() });
+        await loadBoard(state.board.id);
+      }, "List saved.");
+    },
+  }, [
+    title,
+    el("button", { type: "submit", text: "Save" }),
+    el("button", {
+      type: "button",
+      text: "Delete",
+      onclick: () => {
+        if (!window.confirm("Delete this list and its cards?")) return;
+        run(async () => {
+          await deleteList(list.id);
+          await loadBoard(state.board.id);
+        }, "List deleted.");
+      },
+    }),
   ]);
 }
 
@@ -292,8 +358,7 @@ function renderDetail() {
   const card = selectedCard();
   if (!card) return el("aside", { className: "detail empty", text: "Select a card." });
   return el("aside", { className: "detail" }, [
-    el("h2", { text: card.title }),
-    el("p", { text: card.description || "No description" }),
+    renderCardEditForm(card),
     el("section", {}, [
       el("h3", { text: "Assignees" }),
       renderAssigneeForm(card),
@@ -323,6 +388,39 @@ function renderDetail() {
         ])
       ))),
       renderAttachmentForm(card),
+    ]),
+  ]);
+}
+
+function renderCardEditForm(card) {
+  const title = el("input", { value: card.title, "aria-label": "Card title" });
+  const description = el("input", { value: card.description, placeholder: "Card description", "aria-label": "Card description" });
+  return el("form", {
+    className: "card-edit-form",
+    onsubmit: (event) => {
+      event.preventDefault();
+      run(async () => {
+        await updateCard(card.id, { title: title.value.trim(), description: description.value.trim() });
+        await loadBoard(state.board.id);
+      }, "Card saved.");
+    },
+  }, [
+    title,
+    description,
+    el("div", { className: "form-actions" }, [
+      el("button", { type: "submit", text: "Save card" }),
+      el("button", {
+        type: "button",
+        text: "Delete card",
+        onclick: () => {
+          if (!window.confirm("Delete this card?")) return;
+          run(async () => {
+            await deleteCard(card.id);
+            state.selectedCardId = null;
+            await loadBoard(state.board.id);
+          }, "Card deleted.");
+        },
+      }),
     ]),
   ]);
 }

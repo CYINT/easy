@@ -45,6 +45,8 @@ Token scopes:
 ## Lists And Cards
 
 - `POST /api/v1/boards/{boardId}/lists` with `{ "title": "..." }`
+- `PATCH /api/v1/lists/{listId}` with `{ "title": "..." }`
+- `DELETE /api/v1/lists/{listId}`
 - `POST /api/v1/lists/{listId}/cards` with `{ "title": "...", "description": "..." }`
 - `GET /api/v1/cards/{cardId}`
 - `PATCH /api/v1/cards/{cardId}` with `{ "title": "...", "description": "...", "assigneeIds": [] }`

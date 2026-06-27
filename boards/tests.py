@@ -334,6 +334,21 @@ class EasyApiTests(TestCase):
         self.assertEqual(self.card.board_list, self.done)
         self.assertEqual(response.json()["card"]["listId"], self.done.id)
 
+    def test_api_list_update_delete_flow(self):
+        self.client.force_login(self.member)
+        response = self.api("patch", f"/api/v1/lists/{self.todo.id}", {"title": "Denied"})
+        self.assertEqual(response.status_code, 403)
+
+        self.client.force_login(self.owner)
+        response = self.api("patch", f"/api/v1/lists/{self.todo.id}", {"title": "Next"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["list"]["title"], "Next")
+
+        response = self.api("delete", f"/api/v1/lists/{self.todo.id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(BoardList.objects.filter(pk=self.todo.id).exists())
+        self.assertFalse(Card.objects.filter(pk=self.card.id).exists())
+
     def test_api_members_and_assignees_flow(self):
         BoardMembership.objects.filter(board=self.board, user=self.outsider).delete()
         self.client.force_login(self.owner)

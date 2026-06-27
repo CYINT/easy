@@ -92,8 +92,14 @@ a {
   margin: 12px 0;
 }
 
-.inline-form input {
+.inline-form input,
+.inline-form select {
   flex: 1;
+}
+
+.board-settings {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto auto;
 }
 
 .workspace-tools {
@@ -222,9 +228,25 @@ p {
   margin-bottom: 10px;
 }
 
-.lane-header h2,
 .detail h2 {
   font-size: 18px;
+}
+
+.list-title-form,
+.card-edit-form {
+  display: grid;
+  gap: 8px;
+}
+
+.list-title-form {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .cards {
