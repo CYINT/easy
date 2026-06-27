@@ -7,6 +7,7 @@
     "qa:auth-live": "node scripts/auth-live-qa.mjs",
     "qa:auth-totp-live": "node scripts/auth-totp-live-qa.mjs",
     "qa:dragdrop": "node scripts/dragdrop-qa.mjs",
+    "qa:frontend": "node scripts/frontend-smoke-qa.mjs",
     "qa:google-oauth-probe": "node scripts/google-oauth-probe.mjs",
     "qa:public-ingress-probe": "node scripts/public-ingress-probe.mjs"
   },

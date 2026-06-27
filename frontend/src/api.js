@@ -12,7 +12,7 @@ export async function apiFetch(path, options = {}) {
     Accept: "application/json",
     ...options.headers,
   };
-  if (options.body && !headers["Content-Type"]) {
+  if (options.body && !(options.body instanceof FormData) && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
   const token = csrfToken();
@@ -57,6 +57,28 @@ export function createCard(listId, data) {
   return apiFetch(`/lists/${listId}/cards`, { method: "POST", body: JSON.stringify(data) });
 }
 
+export function updateCard(cardId, data) {
+  return apiFetch(`/cards/${cardId}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
 export function moveCard(cardId, data) {
   return apiFetch(`/cards/${cardId}/move`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function createChecklist(cardId, data) {
+  return apiFetch(`/cards/${cardId}/checklists`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function createChecklistItem(checklistId, data) {
+  return apiFetch(`/checklists/${checklistId}/items`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function toggleChecklistItem(itemId) {
+  return apiFetch(`/checklist-items/${itemId}/toggle`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export function uploadAttachment(cardId, file) {
+  const body = new FormData();
+  body.append("file", file);
+  return apiFetch(`/cards/${cardId}/attachments`, { method: "POST", body });
 }

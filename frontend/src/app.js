@@ -1,38 +1,300 @@
-import { currentUser, listBoards } from "./api.js";
+import {
+  createBoard,
+  createCard,
+  createChecklist,
+  createChecklistItem,
+  createList,
+  currentUser,
+  getBoard,
+  listBoards,
+  moveCard,
+  toggleChecklistItem,
+  uploadAttachment,
+} from "./api.js";
 
+const state = {
+  user: null,
+  boards: [],
+  board: null,
+  selectedCardId: null,
+  loading: false,
+};
+
+const app = document.querySelector("#app");
 const status = document.querySelector("#status");
-const boards = document.querySelector("#boards");
-const refresh = document.querySelector("#refresh");
 
 function setStatus(message) {
   status.textContent = message;
 }
 
-function renderBoards(items) {
-  boards.replaceChildren(
-    ...items.map((board) => {
-      const article = document.createElement("article");
-      const title = document.createElement("h2");
-      const meta = document.createElement("p");
-      title.textContent = board.name;
-      meta.textContent = `${board.listCount ?? 0} lists | owner ${board.owner.email || board.owner.username}`;
-      article.append(title, meta);
-      return article;
-    }),
-  );
+function el(tag, options = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(options)) {
+    if (key === "className") node.className = value;
+    else if (key === "text") node.textContent = value;
+    else if (key === "html") node.innerHTML = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2).toLowerCase(), value);
+    else if (value !== undefined && value !== null) node.setAttribute(key, value);
+  }
+  for (const child of children) node.append(child);
+  return node;
 }
 
-async function load() {
+function selectedCard() {
+  for (const list of state.board?.lists ?? []) {
+    const card = list.cards.find((item) => item.id === state.selectedCardId);
+    if (card) return card;
+  }
+  return null;
+}
+
+async function run(action, successMessage) {
   try {
-    setStatus("Loading...");
-    const [{ user }, { boards: boardItems }] = await Promise.all([currentUser(), listBoards()]);
-    setStatus(`Signed in as ${user.email || user.username}`);
-    renderBoards(boardItems);
+    state.loading = true;
+    render();
+    await action();
+    if (successMessage) setStatus(successMessage);
   } catch (error) {
     setStatus(error.message);
-    boards.replaceChildren();
+  } finally {
+    state.loading = false;
+    render();
   }
 }
 
-refresh.addEventListener("click", load);
-load();
+async function refreshBoards() {
+  const [{ user }, { boards }] = await Promise.all([currentUser(), listBoards()]);
+  state.user = user;
+  state.boards = boards;
+  if (!state.board && boards.length) {
+    await loadBoard(boards[0].id);
+  }
+}
+
+async function loadBoard(boardId) {
+  const { board } = await getBoard(boardId);
+  state.board = board;
+  if (!selectedCard()) {
+    state.selectedCardId = board.lists[0]?.cards[0]?.id ?? null;
+  }
+}
+
+function form(placeholder, buttonText, onSubmit) {
+  const input = el("input", { placeholder, "aria-label": placeholder });
+  return el("form", {
+    className: "inline-form",
+    onsubmit: (event) => {
+      event.preventDefault();
+      const value = input.value.trim();
+      if (!value) return;
+      input.value = "";
+      onSubmit(value);
+    },
+  }, [input, el("button", { type: "submit", text: buttonText })]);
+}
+
+function renderSidebar() {
+  return el("aside", { className: "sidebar" }, [
+    el("div", { className: "brand", text: "Easy" }),
+    el("div", { className: "user", text: state.user ? state.user.email || state.user.username : "Not signed in" }),
+    form("New board", "Create", (name) => run(async () => {
+      const { board } = await createBoard({ name });
+      await refreshBoards();
+      await loadBoard(board.id);
+    }, "Board created.")),
+    el("nav", { className: "board-list", "aria-label": "Boards" }, state.boards.map((board) => (
+      el("button", {
+        type: "button",
+        className: board.id === state.board?.id ? "board-link active" : "board-link",
+        text: board.name,
+        onclick: () => run(() => loadBoard(board.id)),
+      })
+    ))),
+  ]);
+}
+
+function renderBoard() {
+  if (!state.board) {
+    return el("section", { className: "empty", text: "Create a board to start planning." });
+  }
+  return el("section", { className: "workspace" }, [
+    el("header", { className: "workspace-header" }, [
+      el("div", {}, [
+        el("h1", { text: state.board.name }),
+        el("p", { text: state.board.description || "No description" }),
+      ]),
+      form("New list", "Add list", (title) => run(async () => {
+        await createList(state.board.id, { title });
+        await loadBoard(state.board.id);
+      }, "List added.")),
+    ]),
+    el("div", { className: "lists" }, state.board.lists.map(renderList)),
+  ]);
+}
+
+function renderList(list, index) {
+  return el("section", { className: "lane" }, [
+    el("header", { className: "lane-header" }, [
+      el("h2", { text: list.title }),
+      el("span", { text: `${list.cards.length}` }),
+    ]),
+    el("div", { className: "cards" }, list.cards.map((card, cardIndex) => renderCard(card, list, index, cardIndex))),
+    form("New card", "Add card", (title) => run(async () => {
+      await createCard(list.id, { title });
+      await loadBoard(state.board.id);
+    }, "Card added.")),
+  ]);
+}
+
+function renderCard(card, list, listIndex, cardIndex) {
+  const checklistTotal = card.checklists.reduce((total, checklist) => total + checklist.items.length, 0);
+  const checklistDone = card.checklists.reduce((total, checklist) => total + checklist.items.filter((item) => item.isDone).length, 0);
+  return el("article", {
+    className: card.id === state.selectedCardId ? "card selected" : "card",
+    onclick: () => {
+      state.selectedCardId = card.id;
+      render();
+    },
+  }, [
+    el("h3", { text: card.title }),
+    el("p", { text: card.description || "No description" }),
+    el("div", { className: "card-meta" }, [
+      el("span", { text: `${checklistDone}/${checklistTotal} checks` }),
+      el("span", { text: `${card.attachments.length} files` }),
+    ]),
+    el("div", { className: "card-actions" }, [
+      el("button", {
+        type: "button",
+        text: "<",
+        disabled: listIndex === 0 ? "disabled" : null,
+        onclick: (event) => {
+          event.stopPropagation();
+          const target = state.board.lists[listIndex - 1];
+          run(async () => {
+            await moveCard(card.id, { listId: target.id, position: target.cards.length });
+            await loadBoard(state.board.id);
+          }, "Card moved.");
+        },
+      }),
+      el("button", {
+        type: "button",
+        text: "^",
+        disabled: cardIndex === 0 ? "disabled" : null,
+        onclick: (event) => {
+          event.stopPropagation();
+          run(async () => {
+            await moveCard(card.id, { listId: list.id, position: cardIndex - 1 });
+            await loadBoard(state.board.id);
+          }, "Card reordered.");
+        },
+      }),
+      el("button", {
+        type: "button",
+        text: "v",
+        disabled: cardIndex >= list.cards.length - 1 ? "disabled" : null,
+        onclick: (event) => {
+          event.stopPropagation();
+          run(async () => {
+            await moveCard(card.id, { listId: list.id, position: cardIndex + 1 });
+            await loadBoard(state.board.id);
+          }, "Card reordered.");
+        },
+      }),
+      el("button", {
+        type: "button",
+        text: ">",
+        disabled: listIndex >= state.board.lists.length - 1 ? "disabled" : null,
+        onclick: (event) => {
+          event.stopPropagation();
+          const target = state.board.lists[listIndex + 1];
+          run(async () => {
+            await moveCard(card.id, { listId: target.id, position: target.cards.length });
+            await loadBoard(state.board.id);
+          }, "Card moved.");
+        },
+      }),
+    ]),
+  ]);
+}
+
+function renderDetail() {
+  const card = selectedCard();
+  if (!card) return el("aside", { className: "detail empty", text: "Select a card." });
+  return el("aside", { className: "detail" }, [
+    el("h2", { text: card.title }),
+    el("p", { text: card.description || "No description" }),
+    el("section", {}, [
+      el("h3", { text: "Checklists" }),
+      ...card.checklists.map(renderChecklist),
+      form("Checklist title", "Add checklist", (title) => run(async () => {
+        await createChecklist(card.id, { title });
+        await loadBoard(state.board.id);
+      }, "Checklist added.")),
+    ]),
+    el("section", {}, [
+      el("h3", { text: "Attachments" }),
+      el("ul", { className: "attachments" }, card.attachments.map((attachment) => (
+        el("li", {}, [
+          el("a", { href: attachment.downloadUrl, target: "_blank", text: attachment.originalName }),
+          el("span", { text: `${Math.ceil(attachment.size / 1024)} KB` }),
+        ])
+      ))),
+      renderAttachmentForm(card),
+    ]),
+  ]);
+}
+
+function renderChecklist(checklist) {
+  return el("div", { className: "checklist" }, [
+    el("h4", { text: checklist.title }),
+    el("ul", {}, checklist.items.map((item) => (
+      el("li", {}, [
+        el("button", {
+          type: "button",
+          className: item.isDone ? "check done" : "check",
+          text: item.isDone ? "x" : "",
+          onclick: () => run(async () => {
+            await toggleChecklistItem(item.id);
+            await loadBoard(state.board.id);
+          }),
+        }),
+        el("span", { className: item.isDone ? "done-text" : "", text: item.text }),
+      ])
+    ))),
+    form("Checklist item", "Add item", (text) => run(async () => {
+      await createChecklistItem(checklist.id, { text });
+      await loadBoard(state.board.id);
+    }, "Checklist item added.")),
+  ]);
+}
+
+function renderAttachmentForm(card) {
+  const input = el("input", { type: "file", name: "file", "aria-label": "Attachment file" });
+  return el("form", {
+    className: "inline-form",
+    onsubmit: (event) => {
+      event.preventDefault();
+      const file = input.files[0];
+      if (!file) return;
+      input.value = "";
+      run(async () => {
+        await uploadAttachment(card.id, file);
+        await loadBoard(state.board.id);
+      }, "Attachment uploaded.");
+    },
+  }, [input, el("button", { type: "submit", text: "Upload" })]);
+}
+
+function render() {
+  app.replaceChildren(renderSidebar(), renderBoard(), renderDetail());
+  document.body.toggleAttribute("aria-busy", state.loading);
+}
+
+async function start() {
+  setStatus("Loading...");
+  await run(async () => {
+    await refreshBoards();
+  }, "Ready.");
+}
+
+start();

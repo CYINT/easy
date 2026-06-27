@@ -3,18 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Easy Frontend Shell</title>
+  <title>Easy Board Client</title>
   <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Easy</h1>
-      <button id="refresh" type="button">Refresh</button>
-    </header>
-    <section id="status" aria-live="polite"></section>
-    <section id="boards"></section>
-  </main>
+  <div id="status" aria-live="polite"></div>
+  <main id="app"></main>
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>

@@ -459,6 +459,22 @@ class EasyApiTests(TestCase):
         )
 
 
+class EasyFrontendTests(TestCase):
+    def test_frontend_app_and_assets_are_served(self):
+        response = self.client.get("/app/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/html")
+        self.assertIn(b"Easy Board Client", b"".join(response.streaming_content))
+
+        response = self.client.get("/app/src/app.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("javascript", response["Content-Type"])
+
+    def test_frontend_asset_route_is_allowlisted(self):
+        response = self.client.get("/app/../README.md")
+        self.assertEqual(response.status_code, 404)
+
+
 class EasyAuthFoundationTests(TestCase):
     def setUp(self):
         cache.clear()
