@@ -57,6 +57,15 @@ Card and board-detail payloads include nested `checklists` and `items`.
 - `POST /api/v1/boards/{boardId}/members` with `{ "email": "user@example.com", "role": "member" }`
 - `POST /api/v1/cards/{cardId}/comments` with `{ "body": "..." }`
 
+## Attachments
+
+Card and board-detail payloads include nested attachment metadata. Uploads use multipart form data with a `file` field and are subject to the same size, type, permission, audit, and rate-limit controls as the browser UI.
+
+- `POST /api/v1/cards/{cardId}/attachments` with multipart field `file`
+- `GET /api/v1/attachments/{attachmentId}`
+- `GET /api/v1/attachments/{attachmentId}/download`
+- `DELETE /api/v1/attachments/{attachmentId}`
+
 ## Response Shape
 
 Successful responses wrap resources by type, for example:

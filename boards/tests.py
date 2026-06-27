@@ -279,6 +279,7 @@ class EasyBoardTests(TestCase):
 class EasyApiTests(TestCase):
     def setUp(self):
         cache.clear()
+        self.media_root = tempfile.mkdtemp()
         self.owner = User.objects.create_user(username="owner", email="owner@example.com", password="password-12345")
         self.member = User.objects.create_user(username="member", email="member@example.com", password="password-12345")
         self.outsider = User.objects.create_user(username="outsider", email="outsider@example.com", password="password-12345")
@@ -287,6 +288,9 @@ class EasyApiTests(TestCase):
         self.todo = BoardList.objects.create(board=self.board, title="Todo", position=0)
         self.done = BoardList.objects.create(board=self.board, title="Done", position=1)
         self.card = Card.objects.create(board_list=self.todo, title="First", position=0, created_by=self.owner)
+
+    def tearDown(self):
+        shutil.rmtree(self.media_root, ignore_errors=True)
 
     def api(self, method, path, payload=None):
         data = json.dumps(payload or {}) if payload is not None else None
@@ -375,6 +379,41 @@ class EasyApiTests(TestCase):
         response = self.api("delete", f"/api/v1/checklists/{checklist_id}")
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Checklist.objects.filter(pk=checklist_id).exists())
+
+    @override_settings(EASY_ATTACHMENT_ALLOWED_TYPES=["image/png"], EASY_ATTACHMENT_MAX_BYTES=1024 * 1024)
+    def test_api_attachment_flow(self):
+        with override_settings(MEDIA_ROOT=self.media_root):
+            self.client.force_login(self.owner)
+            upload = SimpleUploadedFile("agent.png", b"fake-png", content_type="image/png")
+            with self.assertLogs("easy.security", level="INFO") as logs:
+                response = self.client.post(f"/api/v1/cards/{self.card.id}/attachments", {"file": upload})
+            self.assertEqual(response.status_code, 201)
+            self.assertIn("attachment.uploaded", logs.output[0])
+            attachment_id = response.json()["attachment"]["id"]
+            self.assertEqual(response.json()["attachment"]["originalName"], "agent.png")
+
+            response = self.client.get(f"/api/v1/attachments/{attachment_id}")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["attachment"]["downloadUrl"], f"/api/v1/attachments/{attachment_id}/download")
+
+            response = self.client.get(f"/api/v1/attachments/{attachment_id}/download")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), b"fake-png")
+
+            response = self.client.get(f"/api/v1/boards/{self.board.id}")
+            attachments = response.json()["board"]["lists"][0]["cards"][0]["attachments"]
+            self.assertEqual(attachments[0]["id"], attachment_id)
+
+            self.client.force_login(self.outsider)
+            response = self.client.get(f"/api/v1/attachments/{attachment_id}")
+            self.assertEqual(response.status_code, 404)
+
+            self.client.force_login(self.owner)
+            with self.assertLogs("easy.security", level="INFO") as logs:
+                response = self.api("delete", f"/api/v1/attachments/{attachment_id}")
+            self.assertEqual(response.status_code, 204)
+            self.assertIn("attachment.deleted", logs.output[0])
+            self.assertFalse(Attachment.objects.filter(pk=attachment_id).exists())
 
     def test_api_denies_non_member_access(self):
         self.client.force_login(self.outsider)

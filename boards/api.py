@@ -3,13 +3,23 @@ import json
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count
-from django.http import JsonResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
-from .forms import BoardForm, BoardListForm, CardForm, CardUpdateForm, ChecklistForm, ChecklistItemForm, ChecklistItemUpdateForm, CommentForm
-from .models import Board, BoardMembership, Card, Checklist, ChecklistItem
-from .security import audit_event
+from .forms import (
+    AttachmentForm,
+    BoardForm,
+    BoardListForm,
+    CardForm,
+    CardUpdateForm,
+    ChecklistForm,
+    ChecklistItemForm,
+    ChecklistItemUpdateForm,
+    CommentForm,
+)
+from .models import Attachment, Board, BoardMembership, Card, Checklist, ChecklistItem
+from .security import audit_event, rate_limit
 from .views import (
     _board_queryset,
     _get_board_for_user,
@@ -106,6 +116,7 @@ def _card_payload(card):
         "assignees": [_user_payload(user) for user in card.assignees.all()],
         "createdBy": _user_payload(card.created_by) if card.created_by else None,
         "checklists": [_checklist_payload(checklist, include_items=True) for checklist in card.checklists.all()],
+        "attachments": [_attachment_payload(attachment) for attachment in card.attachments.all()],
         "createdAt": card.created_at.isoformat(),
         "updatedAt": card.updated_at.isoformat(),
     }
@@ -145,6 +156,20 @@ def _checklist_item_payload(item):
     }
 
 
+def _attachment_payload(attachment):
+    return {
+        "id": attachment.id,
+        "cardId": attachment.card_id,
+        "originalName": attachment.original_name,
+        "contentType": attachment.content_type,
+        "size": attachment.size,
+        "isImage": attachment.is_image,
+        "uploadedBy": _user_payload(attachment.uploaded_by) if attachment.uploaded_by else None,
+        "downloadUrl": f"/api/v1/attachments/{attachment.id}/download",
+        "createdAt": attachment.created_at.isoformat(),
+    }
+
+
 def _get_checklist_for_user(checklist_id, user):
     checklist = get_object_or_404(Checklist.objects.select_related("card"), pk=checklist_id)
     _get_card_for_user(checklist.card_id, user)
@@ -155,6 +180,12 @@ def _get_checklist_item_for_user(item_id, user):
     item = get_object_or_404(ChecklistItem.objects.select_related("checklist", "checklist__card"), pk=item_id)
     _get_card_for_user(item.checklist.card_id, user)
     return item
+
+
+def _get_attachment_for_user(attachment_id, user):
+    attachment = get_object_or_404(Attachment.objects.select_related("card", "uploaded_by"), pk=attachment_id)
+    _get_card_for_user(attachment.card_id, user)
+    return attachment
 
 
 def _user_can_manage_board(board, user):
@@ -210,6 +241,12 @@ def openapi_schema(request):
                 "/api/v1/cards/{cardId}/move": {"post": {"summary": "Move a card to another position or list."}},
                 "/api/v1/cards/{cardId}/comments": {"post": {"summary": "Add a comment to a card."}},
                 "/api/v1/cards/{cardId}/checklists": {"post": {"summary": "Add a checklist to a card."}},
+                "/api/v1/cards/{cardId}/attachments": {"post": {"summary": "Upload an attachment to a card."}},
+                "/api/v1/attachments/{attachmentId}": {
+                    "get": {"summary": "Return attachment metadata."},
+                    "delete": {"summary": "Delete an attachment."},
+                },
+                "/api/v1/attachments/{attachmentId}/download": {"get": {"summary": "Download attachment bytes."}},
                 "/api/v1/checklists/{checklistId}": {
                     "patch": {"summary": "Update a checklist title."},
                     "delete": {"summary": "Delete a checklist."},
@@ -280,6 +317,7 @@ def board_detail(request, board_id):
                 "lists__cards__assignees",
                 "lists__cards__created_by",
                 "lists__cards__checklists__items",
+                "lists__cards__attachments__uploaded_by",
             )
             .get()
         )
@@ -539,6 +577,76 @@ def toggle_checklist_item(request, item_id):
     item.is_done = not item.is_done
     item.save(update_fields=["is_done"])
     return JsonResponse({"item": _checklist_item_payload(item)})
+
+
+@require_http_methods(["POST"])
+@rate_limit("attachment_upload", "EASY_UPLOAD_RATE_LIMIT")
+def card_attachments(request, card_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    card = _get_card_for_user(card_id, request.user)
+    form = AttachmentForm(request.POST, request.FILES)
+    if not form.is_valid():
+        messages = [error for errors in form.errors.values() for error in errors]
+        return _json_error(messages[0] if messages else "Attachment upload is invalid.", status=422, code="validation_error")
+    uploaded = form.cleaned_data["file"]
+    attachment = Attachment.objects.create(
+        card=card,
+        uploaded_by=request.user,
+        file=uploaded,
+        original_name=uploaded.name,
+        content_type=getattr(uploaded, "content_type", "application/octet-stream"),
+        size=uploaded.size,
+    )
+    audit_event(
+        "attachment.uploaded",
+        request=request,
+        card_id=card.id,
+        attachment_id=attachment.id,
+        content_type=attachment.content_type,
+        size=attachment.size,
+    )
+    return JsonResponse({"attachment": _attachment_payload(attachment)}, status=201)
+
+
+@require_http_methods(["GET", "DELETE"])
+def attachment_detail(request, attachment_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    attachment = _get_attachment_for_user(attachment_id, request.user)
+
+    if request.method == "GET":
+        return JsonResponse({"attachment": _attachment_payload(attachment)})
+
+    if attachment.uploaded_by_id != request.user.id and not _user_can_manage_board(attachment.card.board, request.user):
+        return _json_error("Only the uploader or a board manager can delete this attachment.", status=403, code="permission_denied")
+    audit_event(
+        "attachment.deleted",
+        request=request,
+        card_id=attachment.card_id,
+        attachment_id=attachment.id,
+        content_type=attachment.content_type,
+        size=attachment.size,
+    )
+    attachment.file.delete(save=False)
+    attachment.delete()
+    return JsonResponse({}, status=204)
+
+
+@require_http_methods(["GET"])
+def attachment_download(request, attachment_id):
+    error = _require_auth(request)
+    if error:
+        return error
+    attachment = _get_attachment_for_user(attachment_id, request.user)
+    return FileResponse(
+        attachment.file.open("rb"),
+        as_attachment=False,
+        filename=attachment.original_name,
+        content_type=attachment.content_type,
+    )
 
 
 @require_http_methods(["POST"])
