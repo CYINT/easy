@@ -30,6 +30,7 @@ jobs:
           node --check frontend/src/api.js
           node --check frontend/src/app.js
           node --check scripts/frontend-smoke-qa.mjs
+          node --check scripts/release-gates.mjs
       - name: Python compile check
         run: python -m compileall easy_project boards
       - name: Django check
