@@ -18,7 +18,7 @@ from .forms import (
     ChecklistItemUpdateForm,
     CommentForm,
 )
-from .models import Attachment, Board, BoardMembership, Card, Checklist, ChecklistItem
+from .models import Attachment, Board, BoardMembership, Card, Checklist, ChecklistItem, Comment
 from .security import audit_event, rate_limit
 from .views import (
     _board_queryset,
@@ -131,6 +131,7 @@ def _card_payload(card):
         "position": card.position,
         "assignees": [_user_payload(user) for user in card.assignees.all()],
         "createdBy": _user_payload(card.created_by) if card.created_by else None,
+        "comments": [_comment_payload(comment) for comment in card.comments.all()],
         "checklists": [_checklist_payload(checklist, include_items=True) for checklist in card.checklists.all()],
         "attachments": [_attachment_payload(attachment) for attachment in card.attachments.all()],
         "createdAt": card.created_at.isoformat(),
@@ -204,6 +205,12 @@ def _get_attachment_for_user(attachment_id, user):
     return attachment
 
 
+def _get_comment_for_user(comment_id, user):
+    comment = get_object_or_404(Comment.objects.select_related("card", "author"), pk=comment_id)
+    _get_card_for_user(comment.card_id, user)
+    return comment
+
+
 def _user_can_manage_board(board, user):
     if board.owner_id == user.id:
         return True
@@ -256,6 +263,7 @@ def openapi_schema(request):
                 },
                 "/api/v1/cards/{cardId}/move": {"post": {"summary": "Move a card to another position or list."}},
                 "/api/v1/cards/{cardId}/comments": {"post": {"summary": "Add a comment to a card."}},
+                "/api/v1/comments/{commentId}": {"delete": {"summary": "Delete a comment."}},
                 "/api/v1/cards/{cardId}/checklists": {"post": {"summary": "Add a checklist to a card."}},
                 "/api/v1/cards/{cardId}/attachments": {"post": {"summary": "Upload an attachment to a card."}},
                 "/api/v1/attachments/{attachmentId}": {
@@ -332,6 +340,7 @@ def board_detail(request, board_id):
                 "memberships__user",
                 "lists__cards__assignees",
                 "lists__cards__created_by",
+                "lists__cards__comments__author",
                 "lists__cards__checklists__items",
                 "lists__cards__attachments__uploaded_by",
             )
@@ -482,6 +491,18 @@ def card_comments(request, card_id):
     comment.author = request.user
     comment.save()
     return JsonResponse({"comment": _comment_payload(comment)}, status=201)
+
+
+@require_http_methods(["DELETE"])
+def comment_detail(request, comment_id):
+    error = _require_auth_and_scope(request)
+    if error:
+        return error
+    comment = _get_comment_for_user(comment_id, request.user)
+    if comment.author_id != request.user.id and not _user_can_manage_board(comment.card.board, request.user):
+        return _json_error("Only the comment author or a board manager can delete this comment.", status=403, code="permission_denied")
+    comment.delete()
+    return JsonResponse({}, status=204)
 
 
 @require_http_methods(["POST"])

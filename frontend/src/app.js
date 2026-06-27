@@ -3,8 +3,10 @@ import {
   createCard,
   createChecklist,
   createChecklistItem,
+  createComment,
   createList,
   currentUser,
+  deleteComment,
   getBoard,
   listBoards,
   moveCard,
@@ -224,6 +226,14 @@ function renderDetail() {
     el("h2", { text: card.title }),
     el("p", { text: card.description || "No description" }),
     el("section", {}, [
+      el("h3", { text: "Comments" }),
+      el("ul", { className: "comments" }, card.comments.map(renderComment)),
+      form("Add a comment", "Comment", (body) => run(async () => {
+        await createComment(card.id, { body });
+        await loadBoard(state.board.id);
+      }, "Comment added.")),
+    ]),
+    el("section", {}, [
       el("h3", { text: "Checklists" }),
       ...card.checklists.map(renderChecklist),
       form("Checklist title", "Add checklist", (title) => run(async () => {
@@ -241,6 +251,23 @@ function renderDetail() {
       ))),
       renderAttachmentForm(card),
     ]),
+  ]);
+}
+
+function renderComment(comment) {
+  return el("li", {}, [
+    el("div", {}, [
+      el("strong", { text: comment.author.email || comment.author.username }),
+      el("p", { text: comment.body }),
+    ]),
+    el("button", {
+      type: "button",
+      text: "Delete",
+      onclick: () => run(async () => {
+        await deleteComment(comment.id);
+        await loadBoard(state.board.id);
+      }, "Comment deleted."),
+    }),
   ]);
 }
 

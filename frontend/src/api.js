@@ -65,6 +65,14 @@ export function moveCard(cardId, data) {
   return apiFetch(`/cards/${cardId}/move`, { method: "POST", body: JSON.stringify(data) });
 }
 
+export function createComment(cardId, data) {
+  return apiFetch(`/cards/${cardId}/comments`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function deleteComment(commentId) {
+  return apiFetch(`/comments/${commentId}`, { method: "DELETE" });
+}
+
 export function createChecklist(cardId, data) {
   return apiFetch(`/cards/${cardId}/checklists`, { method: "POST", body: JSON.stringify(data) });
 }

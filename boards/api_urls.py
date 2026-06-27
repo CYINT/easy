@@ -16,6 +16,7 @@ urlpatterns = [
     path("cards/<int:card_id>", api.card_detail, name="card_detail"),
     path("cards/<int:card_id>/move", api.move_card, name="move_card"),
     path("cards/<int:card_id>/comments", api.card_comments, name="card_comments"),
+    path("comments/<int:comment_id>", api.comment_detail, name="comment_detail"),
     path("cards/<int:card_id>/checklists", api.card_checklists, name="card_checklists"),
     path("cards/<int:card_id>/attachments", api.card_attachments, name="card_attachments"),
     path("attachments/<int:attachment_id>", api.attachment_detail, name="attachment_detail"),

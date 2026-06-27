@@ -380,6 +380,32 @@ class EasyApiTests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Checklist.objects.filter(pk=checklist_id).exists())
 
+    def test_api_comment_flow_and_permissions(self):
+        self.client.force_login(self.owner)
+
+        response = self.api("post", f"/api/v1/cards/{self.card.id}/comments", {"body": "Ready for review"})
+        self.assertEqual(response.status_code, 201)
+        owner_comment_id = response.json()["comment"]["id"]
+
+        response = self.client.get(f"/api/v1/boards/{self.board.id}")
+        self.assertEqual(response.status_code, 200)
+        comments = response.json()["board"]["lists"][0]["cards"][0]["comments"]
+        self.assertEqual(comments[0]["body"], "Ready for review")
+
+        member_comment = Comment.objects.create(card=self.card, author=self.member, body="Member note")
+        self.client.force_login(self.outsider)
+        response = self.api("delete", f"/api/v1/comments/{member_comment.id}")
+        self.assertEqual(response.status_code, 404)
+
+        self.client.force_login(self.owner)
+        response = self.api("delete", f"/api/v1/comments/{member_comment.id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Comment.objects.filter(pk=member_comment.id).exists())
+
+        response = self.api("delete", f"/api/v1/comments/{owner_comment_id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Comment.objects.filter(pk=owner_comment_id).exists())
+
     @override_settings(EASY_ATTACHMENT_ALLOWED_TYPES=["image/png"], EASY_ATTACHMENT_MAX_BYTES=1024 * 1024)
     def test_api_attachment_flow(self):
         with override_settings(MEDIA_ROOT=self.media_root):
