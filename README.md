@@ -151,6 +151,12 @@ $env:EASY_RELEASE_HOSTNAME="<your-hostname>"
 npm run qa:release-gates
 ```
 
+The guarded tag helper runs the same gates and defaults to a dry run:
+
+```powershell
+npm run release:tag -- v0.1.0 --dry-run
+```
+
 ## Backups
 
 PostgreSQL backup:

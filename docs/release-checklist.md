@@ -50,12 +50,20 @@ The gate fails unless public HTTPS ingress is verified. For an explicitly accept
 
 ## Tagging
 
-After all applicable gates pass:
+After all applicable gates pass, dry-run the tag command:
 
 ```powershell
 git status --short
-git tag -a v0.1.0 -m "Easy MVP release"
-git push origin v0.1.0
+$env:EASY_RELEASE_HOSTNAME="<your-hostname>"
+npm run release:tag -- v0.1.0 --dry-run
+```
+
+To create and push the tag after the dry run passes:
+
+```powershell
+$env:EASY_RELEASE_CREATE_TAG="true"
+$env:EASY_RELEASE_PUSH="true"
+npm run release:tag -- v0.1.0
 ```
 
 Do not create or push the tag while any required gate is unresolved.
