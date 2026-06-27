@@ -1,4 +1,5 @@
 import {
+  addBoardMember,
   createBoard,
   createCard,
   createChecklist,
@@ -11,6 +12,7 @@ import {
   listBoards,
   moveCard,
   toggleChecklistItem,
+  updateCard,
   uploadAttachment,
 } from "./api.js";
 
@@ -95,6 +97,15 @@ function form(placeholder, buttonText, onSubmit) {
   }, [input, el("button", { type: "submit", text: buttonText })]);
 }
 
+function boardUsers() {
+  if (!state.board) return [];
+  return [state.board.owner, ...(state.board.members ?? []).map((membership) => membership.user)];
+}
+
+function userLabel(user) {
+  return user.email || user.username;
+}
+
 function renderSidebar() {
   return el("aside", { className: "sidebar" }, [
     el("div", { className: "brand", text: "Easy" }),
@@ -125,12 +136,46 @@ function renderBoard() {
         el("h1", { text: state.board.name }),
         el("p", { text: state.board.description || "No description" }),
       ]),
-      form("New list", "Add list", (title) => run(async () => {
-        await createList(state.board.id, { title });
-        await loadBoard(state.board.id);
-      }, "List added.")),
+      el("div", { className: "workspace-tools" }, [
+        form("New list", "Add list", (title) => run(async () => {
+          await createList(state.board.id, { title });
+          await loadBoard(state.board.id);
+        }, "List added.")),
+        renderMemberForm(),
+      ]),
     ]),
+    renderMembers(),
     el("div", { className: "lists" }, state.board.lists.map(renderList)),
+  ]);
+}
+
+function renderMemberForm() {
+  const email = el("input", { type: "email", placeholder: "Member email", "aria-label": "Member email" });
+  const role = el("select", { "aria-label": "Member role" }, [
+    el("option", { value: "member", text: "Member" }),
+    el("option", { value: "admin", text: "Admin" }),
+  ]);
+  return el("form", {
+    className: "inline-form member-form",
+    onsubmit: (event) => {
+      event.preventDefault();
+      const value = email.value.trim();
+      if (!value) return;
+      email.value = "";
+      run(async () => {
+        await addBoardMember(state.board.id, { email: value, role: role.value });
+        await loadBoard(state.board.id);
+      }, "Member saved.");
+    },
+  }, [email, role, el("button", { type: "submit", text: "Add member" })]);
+}
+
+function renderMembers() {
+  return el("div", { className: "members", "aria-label": "Board members" }, [
+    el("span", { text: `Owner: ${userLabel(state.board.owner)}` }),
+    ...(state.board.members ?? []).map((membership) => (
+      el("span", { text: `${userLabel(membership.user)} (${membership.role})` })
+    )),
   ]);
 }
 
@@ -163,6 +208,7 @@ function renderCard(card, list, listIndex, cardIndex) {
     el("div", { className: "card-meta" }, [
       el("span", { text: `${checklistDone}/${checklistTotal} checks` }),
       el("span", { text: `${card.attachments.length} files` }),
+      el("span", { text: `${card.assignees.length} assigned` }),
     ]),
     el("div", { className: "card-actions" }, [
       el("button", {
@@ -226,6 +272,10 @@ function renderDetail() {
     el("h2", { text: card.title }),
     el("p", { text: card.description || "No description" }),
     el("section", {}, [
+      el("h3", { text: "Assignees" }),
+      renderAssigneeForm(card),
+    ]),
+    el("section", {}, [
       el("h3", { text: "Comments" }),
       el("ul", { className: "comments" }, card.comments.map(renderComment)),
       form("Add a comment", "Comment", (body) => run(async () => {
@@ -251,6 +301,35 @@ function renderDetail() {
       ))),
       renderAttachmentForm(card),
     ]),
+  ]);
+}
+
+function renderAssigneeForm(card) {
+  const selectedIds = new Set(card.assignees.map((user) => String(user.id)));
+  const users = boardUsers();
+  if (!users.length) return el("p", { text: "No board users." });
+  return el("form", {
+    className: "assignee-form",
+    onsubmit: (event) => {
+      event.preventDefault();
+      const assigneeIds = Array.from(event.currentTarget.querySelectorAll("input:checked")).map((input) => input.value);
+      run(async () => {
+        await updateCard(card.id, { assigneeIds });
+        await loadBoard(state.board.id);
+      }, "Assignees saved.");
+    },
+  }, [
+    el("div", { className: "assignee-options" }, users.map((user) => (
+      el("label", {}, [
+        el("input", {
+          type: "checkbox",
+          value: user.id,
+          checked: selectedIds.has(String(user.id)) ? "checked" : null,
+        }),
+        el("span", { text: userLabel(user) }),
+      ])
+    ))),
+    el("button", { type: "submit", text: "Save assignees" }),
   ]);
 }
 

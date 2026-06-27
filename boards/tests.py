@@ -334,6 +334,28 @@ class EasyApiTests(TestCase):
         self.assertEqual(self.card.board_list, self.done)
         self.assertEqual(response.json()["card"]["listId"], self.done.id)
 
+    def test_api_members_and_assignees_flow(self):
+        BoardMembership.objects.filter(board=self.board, user=self.outsider).delete()
+        self.client.force_login(self.owner)
+
+        response = self.api("post", f"/api/v1/boards/{self.board.id}/members", {"email": self.outsider.email, "role": "admin"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["membership"]["user"]["email"], self.outsider.email)
+        self.assertEqual(response.json()["membership"]["role"], "admin")
+
+        response = self.api("patch", f"/api/v1/cards/{self.card.id}", {"assigneeIds": [self.member.id, self.outsider.id]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([user["email"] for user in response.json()["card"]["assignees"]], [self.member.email, self.outsider.email])
+
+        response = self.client.get(f"/api/v1/boards/{self.board.id}")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["board"]
+        self.assertEqual(payload["members"][1]["user"]["email"], self.outsider.email)
+        self.assertEqual(
+            [user["email"] for user in payload["lists"][0]["cards"][0]["assignees"]],
+            [self.member.email, self.outsider.email],
+        )
+
     def test_api_checklist_flow(self):
         self.client.force_login(self.owner)
 
