@@ -36,6 +36,7 @@ Complete `docs/release-checklist.md` before creating a public release tag.
 - Confirm `python manage.py bootstrap_admin` created or updated the first administrator.
 - Confirm public signup requires a one-time administrator-created invitation code.
 - Verify `https://<your-hostname>/health/` returns `{"status":"ok","service":"easy"}`.
+- For existing deployments, follow `docs/upgrade.md` and keep pre-upgrade database/media backups outside Git.
 
 ## Local Bridge Deployment
 

@@ -19,6 +19,7 @@ Use this checklist before creating a public release tag.
 - Confirm board, list, card, comment, checklist, attachment, assignment, and member-management workflows pass a smoke test.
 - Confirm database and media backup commands run successfully.
 - Confirm a restore has been tested before relying on the deployment for production data.
+- Confirm `docs/upgrade.md` is reviewed for existing deployments.
 - Confirm `easy.security` logs are retained by the host log collection path.
 
 ## Public Ingress Gate

@@ -189,6 +189,10 @@ docker run --rm -v easy_easy_media:/media -v ${PWD}:/backup alpine sh -c "cd /me
 
 Test both database and attachment restore before relying on a public deployment.
 
+## Upgrades
+
+Before upgrading, create fresh database and media backups, move to the target tag or commit, rebuild the Compose stack, and verify the deployment. See `docs/upgrade.md`.
+
 ## Backend API And Frontend Boundary
 
 Agents and standalone frontends should use the JSON API documented in `docs/agent-api.md`. The API root is `/api/v1/`, and `/api/v1/openapi.json` exposes a compact OpenAPI schema.
