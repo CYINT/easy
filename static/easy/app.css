@@ -260,6 +260,68 @@ main {
   gap: 1rem;
 }
 
+.auth-shell {
+  display: grid;
+  min-height: calc(100vh - 8rem);
+  place-items: start center;
+  padding-top: 3rem;
+}
+
+.auth-panel,
+.account-panel {
+  width: min(100%, 34rem);
+  padding: 1.25rem;
+}
+
+.auth-panel form,
+.account-panel form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.auth-panel h1,
+.account-panel h1 {
+  margin-top: 0;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+
+.auth-panel ul,
+.account-panel ul {
+  padding-left: 1.2rem;
+}
+
+.auth-panel button,
+.account-panel button,
+.auth-panel input,
+.account-panel input {
+  width: 100%;
+}
+
+.account-shell {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 42rem);
+  gap: 1rem;
+  align-items: start;
+  max-width: 64rem;
+  margin: 1rem auto;
+}
+
+.account-nav {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.account-nav a {
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  text-decoration: none;
+}
+
+.account-nav a:hover {
+  background: var(--surface-muted);
+}
+
 .panel {
   padding: 1rem;
 }
@@ -583,6 +645,7 @@ main {
   .page-header,
   .board-header,
   .dashboard-grid,
+  .account-shell,
   .card-page,
   .member-grid,
   .hero {

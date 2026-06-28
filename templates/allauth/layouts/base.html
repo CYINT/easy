@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% block head_title %}{% endblock head_title %} - {{ easy_app_name }}{% endblock %}
+
+{% block main %}
+  {% block body %}
+    {% if messages %}
+      <aside class="messages" aria-live="polite">
+        {% for message in messages %}
+          <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </aside>
+    {% endif %}
+    {% block content %}{% endblock content %}
+  {% endblock body %}
+{% endblock main %}

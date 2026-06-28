@@ -1,0 +1,16 @@
+{% extends "allauth/layouts/base.html" %}
+
+{% block body %}
+<section class="account-shell">
+  <aside class="account-nav panel" aria-label="Account settings">
+    <p class="eyebrow">{{ easy_app_name }} account</p>
+    <a href="{% url 'account_email' %}">Email</a>
+    <a href="{% url 'account_change_password' %}">Password</a>
+    <a href="{% url 'mfa_index' %}">{{ easy_mfa_display_name }}</a>
+    <a href="{% url 'boards:dashboard' %}">Boards</a>
+  </aside>
+  <div class="account-panel panel">
+    {% block content %}{% endblock content %}
+  </div>
+</section>
+{% endblock body %}

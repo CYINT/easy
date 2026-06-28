@@ -26,6 +26,8 @@ ALLOWED_HOSTS = env_list(
 )
 EASY_RELEASE_VERSION = os.environ.get("EASY_RELEASE_VERSION", "0.1.0")
 EASY_RELEASE_COMMIT = os.environ.get("EASY_RELEASE_COMMIT", "unknown")
+EASY_APP_NAME = os.environ.get("EASY_APP_NAME", "Easy")
+EASY_MFA_DISPLAY_NAME = os.environ.get("EASY_MFA_DISPLAY_NAME", "MFA and passkeys")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -73,6 +75,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "boards.context_processors.easy_branding",
             ],
         },
     },

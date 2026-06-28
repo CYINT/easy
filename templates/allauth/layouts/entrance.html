@@ -1,0 +1,10 @@
+{% extends "allauth/layouts/base.html" %}
+
+{% block body %}
+<section class="auth-shell">
+  <div class="auth-panel panel">
+    <p class="eyebrow">{{ easy_app_name }} account</p>
+    {% block content %}{% endblock content %}
+  </div>
+</section>
+{% endblock body %}

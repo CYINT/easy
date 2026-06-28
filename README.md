@@ -20,6 +20,7 @@ Easy is designed to run on self-managed infrastructure and can be served publicl
 - Health endpoint at `/health/`.
 - Agent-friendly JSON API under `/api/v1/` with bearer-token support.
 - Separate frontend shell under `frontend/` that consumes the API instead of Django model routes.
+- Easy-branded account shell for login, signup, password reset, and MFA/passkey management.
 
 ## MVP Boundaries
 
@@ -83,7 +84,16 @@ Do not commit Google OAuth secrets or local credential files.
 
 MFA and passkey support are enabled through django-allauth. After signing in, use the account security pages to enroll TOTP, recovery codes, or WebAuthn/passkey credentials.
 
-The local navigation includes an `MFA and passkeys` link to `/accounts/2fa/`.
+The local navigation includes a configurable MFA link to `/accounts/2fa/`.
+
+Customize the app and MFA display names with:
+
+```text
+EASY_APP_NAME=Easy
+EASY_MFA_DISPLAY_NAME=MFA and passkeys
+```
+
+These names affect the Django UI shell and account/MFA pages. They do not change the Python package name, Docker service names, database names, API paths, or license.
 
 ## Administrator And Invitations
 
@@ -209,6 +219,16 @@ Use `--scope write` only when an agent needs to mutate boards. The raw token is 
 The legacy Django template routes remain available as a compatibility UI. New frontend work belongs under `frontend/` and should use `frontend/src/api.js`.
 
 The older server-rendered route and permission contract is documented in `docs/core-workflow-api.md`.
+
+## UI Shells
+
+Easy currently has three UI surfaces:
+
+- Django application shell in `templates/base.html` for server-rendered boards and account links.
+- allauth account shell in `templates/allauth/layouts/` for login, signup, password reset, and MFA/passkey management.
+- API-driven frontend shell in `frontend/` for standalone client work against `/api/v1/`.
+
+Keep new standalone product UI work in `frontend/`. Keep auth/account customizations in the allauth layout overrides unless a specific allauth form needs its own template.
 
 UI work should follow `docs/ui-quality-standard.md`. The standard is intentionally opinionated for an operational board: WCAG 2.2 AA basics, restrained visual styling, reliable card movement, and E2E checks for overflow, focus, contrast, target sizing, and drop-zone usability.
 

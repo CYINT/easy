@@ -595,6 +595,31 @@ class EasyAuthFoundationTests(TestCase):
             with self.subTest(route_name=route_name):
                 self.assertTrue(reverse(route_name))
 
+    @override_settings(EASY_APP_NAME="Acme Boards", EASY_MFA_DISPLAY_NAME="Account security")
+    def test_branding_context_customizes_shell_navigation(self):
+        user = User.objects.create_user(username="brand", email="brand@example.com", password="password-12345")
+        self.client.force_login(user)
+        response = self.client.get(reverse("boards:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Acme Boards")
+        self.assertContains(response, "Account security")
+
+    @override_settings(EASY_APP_NAME="Acme Boards", EASY_MFA_DISPLAY_NAME="Account security")
+    def test_login_uses_easy_auth_shell(self):
+        response = self.client.get(reverse("account_login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Acme Boards account")
+        self.assertContains(response, "auth-shell")
+
+    @override_settings(EASY_APP_NAME="Acme Boards", EASY_MFA_DISPLAY_NAME="Account security")
+    def test_mfa_management_uses_easy_account_shell(self):
+        user = User.objects.create_user(username="shell", email="shell@example.com", password="password-12345")
+        self.client.force_login(user)
+        response = self.client.get(reverse("mfa_index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Account security")
+        self.assertContains(response, "account-shell")
+
     def test_google_login_route_is_not_enabled_by_default(self):
         self.assertFalse(settings.EASY_ENABLE_GOOGLE_OAUTH)
         with self.assertRaises(NoReverseMatch):
