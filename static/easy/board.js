@@ -5,6 +5,10 @@ function getCookie(name) {
   return "";
 }
 
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || getCookie("csrftoken");
+}
+
 function cardPosition(card) {
   const stack = card.closest("[data-dropzone]");
   return Array.from(stack.querySelectorAll("[data-card-id]")).indexOf(card);
@@ -29,7 +33,7 @@ async function persistMove(card) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken"),
+      "X-CSRFToken": getCsrfToken(),
     },
     body: JSON.stringify({ list_id: stack.dataset.listId, position: cardPosition(card) }),
   });

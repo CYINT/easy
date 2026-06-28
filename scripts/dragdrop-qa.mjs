@@ -24,6 +24,7 @@ const env = {
   DJANGO_SECURE_SSL_REDIRECT: "false",
   DJANGO_SESSION_COOKIE_SECURE: "false",
   DJANGO_CSRF_COOKIE_SECURE: "false",
+  DJANGO_CSRF_COOKIE_HTTPONLY: process.env.EASY_QA_CSRF_COOKIE_HTTPONLY || "false",
 };
 
 function run(command, args, options = {}) {
