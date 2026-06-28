@@ -8,13 +8,12 @@
   <title>{% block title %}{{ easy_app_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'easy/app.css' %}">
 </head>
-<body>
+<body class="{% if user.is_authenticated %}has-app-shell{% else %}public-shell{% endif %}">
   <header class="site-header">
     <a class="brand" href="{% url 'boards:home' %}">{{ easy_app_name }}</a>
-    <nav class="nav-links" aria-label="Primary">
+    <nav class="top-nav" aria-label="Account">
       {% if user.is_authenticated %}
-        <a href="{% url 'boards:dashboard' %}">Boards</a>
-        <a href="/accounts/2fa/">{{ easy_mfa_display_name }}</a>
+        <span class="user-chip">{{ user.email|default:user.username }}</span>
         <form class="logout-form" method="post" action="{% url 'account_logout' %}">
           {% csrf_token %}
           <button type="submit">Sign out</button>
@@ -33,9 +32,23 @@
     </aside>
   {% endif %}
 
-  <main>
-    {% block main %}{% block content %}{% endblock %}{% endblock %}
-  </main>
+  {% if user.is_authenticated %}
+    <div class="app-layout">
+      <aside class="app-sidebar" aria-label="Workspace navigation">
+        <nav class="app-nav">
+          <a href="{% url 'boards:dashboard' %}" {% if request.path == "/boards/" %}aria-current="page"{% endif %}>Boards</a>
+          <a href="/app/">API client</a>
+          <a href="/api/v1/openapi.json">OpenAPI</a>
+          <a href="/accounts/2fa/">{{ easy_mfa_display_name }}</a>
+        </nav>
+      </aside>
+  {% endif %}
+      <main class="{% if user.is_authenticated %}app-main{% else %}public-main{% endif %}">
+        {% block main %}{% block content %}{% endblock %}{% endblock %}
+      </main>
+  {% if user.is_authenticated %}
+    </div>
+  {% endif %}
   {% block extra_body %}{% endblock %}
 </body>
 </html>

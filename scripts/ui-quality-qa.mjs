@@ -125,13 +125,25 @@ async function collectQualityMetrics(page) {
     };
     const cssTimes = (value) => value.split(",").map((part) => part.trim()).filter(Boolean);
     const rootStyle = getComputedStyle(document.body);
-    const elements = Array.from(document.querySelectorAll(".panel, .list-column, .card, button, input, textarea, select, summary"));
-    const motionElements = Array.from(document.querySelectorAll(".card, button, .disclosure-panel summary"));
+    const elements = Array.from(document.querySelectorAll(".panel, .list-column, .card, button, input, textarea, select, summary, .app-nav a, .user-chip"));
+    const motionElements = Array.from(document.querySelectorAll(".card, button, .disclosure-panel summary, .app-nav a"));
     const card = document.querySelector(".card");
     const cardStyle = card ? getComputedStyle(card) : null;
+    const sidebar = document.querySelector(".app-sidebar");
+    const appLayout = document.querySelector(".app-layout");
     return {
       overflow: document.documentElement.scrollWidth > window.innerWidth,
       bodyBackgroundImage: rootStyle.backgroundImage,
+      shell: {
+        hasLayout: Boolean(appLayout),
+        sidebarWidth: sidebar?.getBoundingClientRect().width || 0,
+        sidebarHeight: sidebar?.getBoundingClientRect().height || 0,
+        columns: appLayout ? getComputedStyle(appLayout).gridTemplateColumns : "",
+        navTargets: Array.from(document.querySelectorAll(".app-nav a")).map((item) => {
+          const box = item.getBoundingClientRect();
+          return { text: item.textContent.trim(), width: box.width, height: box.height };
+        }),
+      },
       cardContrast: cardStyle ? { color: cardStyle.color, background: cardStyle.backgroundColor } : null,
       maxRadius: Math.max(...elements.map((element) => px(getComputedStyle(element).borderTopLeftRadius))),
       nonZeroLetterSpacing: elements
@@ -163,10 +175,14 @@ async function collectQualityMetrics(page) {
         };
       }),
       smallTargets: elements
-        .filter((element) => element.matches("button, input, textarea, select, summary"))
+        .filter((element) => element.matches("button, input, textarea, select, summary, .app-nav a"))
         .map((element) => ({ tag: element.tagName, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.width < 32 || box.height < 32),
+      listColumns: Array.from(document.querySelectorAll(".list-column")).map((column) => {
+        const box = column.getBoundingClientRect();
+        return { width: box.width, height: box.height };
+      }),
       emptyDropzone: (() => {
         const zone = document.querySelector(`[data-dropzone][data-list-id="${doneListId}"]`);
         if (!zone) return null;
@@ -182,6 +198,10 @@ function assertSharedQuality(metrics, viewport) {
   if (metrics.maxRadius > 8) throw new Error(`Operational UI radius exceeds 8px: ${metrics.maxRadius}`);
   if (metrics.smallTargets.length) throw new Error(`Controls below 32px target size: ${JSON.stringify(metrics.smallTargets)}`);
   if (metrics.bodyBackgroundImage !== "none") throw new Error(`App background should be plain, got ${metrics.bodyBackgroundImage}`);
+  if (!metrics.shell.hasLayout) throw new Error("Authenticated pages should render the application shell");
+  if (viewport.width >= 900 && metrics.shell.sidebarWidth < 180) throw new Error(`Desktop sidebar is too narrow: ${JSON.stringify(metrics.shell)}`);
+  if (viewport.width < 900 && metrics.shell.sidebarHeight > 90) throw new Error(`Mobile navigation rail is too tall: ${JSON.stringify(metrics.shell)}`);
+  if (metrics.shell.navTargets.length < 3) throw new Error(`Expected primary shell navigation targets: ${JSON.stringify(metrics.shell.navTargets)}`);
   if (metrics.nonZeroLetterSpacing.length) throw new Error(`Operational UI uses non-zero letter spacing: ${JSON.stringify(metrics.nonZeroLetterSpacing)}`);
   if (metrics.excessiveMotion.length) throw new Error(`Motion exceeds 250ms or uses delay: ${JSON.stringify(metrics.excessiveMotion)}`);
   if (metrics.animatedElements < 1) throw new Error("Expected bounded transitions on cards, controls, or disclosure triggers");
@@ -199,6 +219,8 @@ async function assertBoardQuality(page, viewport) {
   if (!metrics.emptyDropzone || metrics.emptyDropzone.height < 80) {
     throw new Error(`Empty drop zone is too small: ${JSON.stringify(metrics.emptyDropzone)}`);
   }
+  const undersizedColumns = metrics.listColumns.filter((column) => column.width < 280 || column.width > 360);
+  if (undersizedColumns.length) throw new Error(`Board list column width outside expected range: ${JSON.stringify(metrics.listColumns)}`);
   if (!metrics.cardContrast || contrastRatio(metrics.cardContrast.color, metrics.cardContrast.background) < 4.5) {
     throw new Error(`Card text contrast below WCAG AA: ${JSON.stringify(metrics.cardContrast)}`);
   }
