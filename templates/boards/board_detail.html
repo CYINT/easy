@@ -60,7 +60,7 @@
   </div>
 </details>
 
-<section class="board" data-board-id="{{ board.id }}">
+<section class="board" data-board-id="{{ board.id }}" aria-label="{{ board.name }} lists">
   {% for list in lists %}
     <article class="list-column" data-list-id="{{ list.id }}">
       <header>
@@ -75,7 +75,7 @@
         {% csrf_token %}
         <button class="danger-button compact-button" type="submit">Delete list</button>
       </form>
-      <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}">
+      <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}" aria-label="{{ list.title }} cards">
         {% for card in list.cards.all %}
           <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}" aria-describedby="board-keyboard-help">
             <strong>{{ card.title }}</strong>

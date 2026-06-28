@@ -40,6 +40,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let dragged = null;
   let origin = null;
   let originNext = null;
+  let didDrop = false;
+  let suppressClick = false;
 
   function rememberOrigin(card) {
     origin = card.parentElement;
@@ -50,6 +52,37 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!origin) return;
     if (originNext && originNext.parentElement === origin) origin.insertBefore(card, originNext);
     else origin.appendChild(card);
+  }
+
+  function clearDropTargets() {
+    document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
+  }
+
+  function placeCard(stack, clientY) {
+    if (!dragged || dragged.parentElement === stack && stack.children.length === 1) return;
+    const before = nearestCard(stack, clientY);
+    if (before) stack.insertBefore(dragged, before);
+    else stack.appendChild(dragged);
+  }
+
+  async function saveDraggedMove() {
+    if (!dragged) return;
+    try {
+      await persistMove(dragged);
+    } catch (error) {
+      restoreOrigin(dragged);
+      window.alert("Easy could not save that move. The card was returned to its previous list.");
+    }
+  }
+
+  function resetDrag() {
+    if (dragged) dragged.classList.remove("dragging");
+    document.body.classList.remove("is-dragging-card");
+    clearDropTargets();
+    dragged = null;
+    origin = null;
+    originNext = null;
+    didDrop = false;
   }
 
   function siblingList(stack, direction) {
@@ -89,25 +122,29 @@ document.addEventListener("DOMContentLoaded", () => {
     card.addEventListener("dragstart", (event) => {
       dragged = card;
       rememberOrigin(card);
+      didDrop = false;
+      suppressClick = false;
+      document.body.classList.add("is-dragging-card");
       card.classList.add("dragging");
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", card.dataset.cardId);
     });
 
-    card.addEventListener("dragend", async () => {
+    card.addEventListener("dragend", () => {
       if (!dragged) return;
-      dragged.classList.remove("dragging");
-      document.querySelectorAll(".drop-target").forEach((target) => target.classList.remove("drop-target"));
-      try {
-        await persistMove(dragged);
-      } catch (error) {
+      if (!didDrop) {
         restoreOrigin(dragged);
-        window.alert("Easy could not save that move. The card was returned to its previous list.");
-      } finally {
-        dragged = null;
-        origin = null;
-        originNext = null;
       }
+      suppressClick = true;
+      resetDrag();
+      window.setTimeout(() => {
+        suppressClick = false;
+      }, 0);
+    });
+
+    card.addEventListener("click", (event) => {
+      if (!suppressClick) return;
+      event.preventDefault();
     });
 
     card.addEventListener("keydown", (event) => {
@@ -129,16 +166,26 @@ document.addEventListener("DOMContentLoaded", () => {
     stack.addEventListener("dragover", (event) => {
       event.preventDefault();
       if (!dragged) return;
-      const before = nearestCard(stack, event.clientY);
-      if (before) stack.insertBefore(dragged, before);
-      else stack.appendChild(dragged);
+      event.dataTransfer.dropEffect = "move";
+      stack.classList.add("drop-target");
+      placeCard(stack, event.clientY);
     });
 
     stack.addEventListener("dragenter", () => stack.classList.add("drop-target"));
-    stack.addEventListener("dragleave", () => stack.classList.remove("drop-target"));
-    stack.addEventListener("drop", (event) => {
+    stack.addEventListener("dragleave", (event) => {
+      if (!stack.contains(event.relatedTarget)) stack.classList.remove("drop-target");
+    });
+    stack.addEventListener("drop", async (event) => {
       event.preventDefault();
-      stack.classList.remove("drop-target");
+      if (!dragged) return;
+      didDrop = true;
+      placeCard(stack, event.clientY);
+      await saveDraggedMove();
+      suppressClick = true;
+      resetDrag();
+      window.setTimeout(() => {
+        suppressClick = false;
+      }, 0);
     });
   });
 });

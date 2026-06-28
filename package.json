@@ -10,6 +10,7 @@
     "qa:frontend": "node scripts/frontend-smoke-qa.mjs",
     "qa:google-oauth-probe": "node scripts/google-oauth-probe.mjs",
     "qa:public-ingress-probe": "node scripts/public-ingress-probe.mjs",
+    "qa:ui-quality": "node scripts/ui-quality-qa.mjs",
     "qa:release-gates": "node scripts/release-gates.mjs",
     "release:tag": "node scripts/create-release-tag.mjs"
   },

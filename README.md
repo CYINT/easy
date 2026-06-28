@@ -210,11 +210,14 @@ The legacy Django template routes remain available as a compatibility UI. New fr
 
 The older server-rendered route and permission contract is documented in `docs/core-workflow-api.md`.
 
+UI work should follow `docs/ui-quality-standard.md`. The standard is intentionally opinionated for an operational board: WCAG 2.2 AA basics, restrained visual styling, reliable card movement, and E2E checks for overflow, focus, contrast, target sizing, and drop-zone usability.
+
 ## Verification
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py test
+npm run qa:ui-quality
 docker compose config
 ```
 
