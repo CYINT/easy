@@ -10,14 +10,17 @@
     <h1>{{ board.name }}</h1>
     {% if board.description %}<p>{{ board.description }}</p>{% endif %}
   </div>
-  <form class="inline-create" method="post" action="{% url 'boards:create_list' board.id %}">
-    {% csrf_token %}
-    {{ list_form.title }}
-    <button type="submit">Add list</button>
-  </form>
+  <details class="disclosure-panel inline-disclosure" data-qa-disclosure="add-list">
+    <summary>Add list</summary>
+    <form class="inline-create" method="post" action="{% url 'boards:create_list' board.id %}">
+      {% csrf_token %}
+      {{ list_form.title }}
+      <button type="submit">Add list</button>
+    </form>
+  </details>
 </section>
 
-<details class="member-panel panel">
+<details class="member-panel panel disclosure-panel">
   <summary>Board members</summary>
   <div class="member-grid">
     <div>
@@ -42,7 +45,7 @@
   </div>
 </details>
 
-<details class="member-panel panel">
+<details class="member-panel panel disclosure-panel">
   <summary>Board settings</summary>
   <div class="member-grid">
     <form method="post" action="{% url 'boards:update_board' board.id %}">
@@ -64,17 +67,21 @@
   {% for list in lists %}
     <article class="list-column" data-list-id="{{ list.id }}">
       <header>
+        <h2>{{ list.title }}</h2>
+        <span>{{ list.cards.count }}</span>
+      </header>
+      <details class="list-actions disclosure-panel" data-qa-disclosure="list-actions">
+        <summary>List actions</summary>
         <form class="list-title-form" method="post" action="{% url 'boards:update_list' list.id %}">
           {% csrf_token %}
           <input name="title" value="{{ list.title }}" aria-label="List title">
           <button type="submit">Save</button>
         </form>
-        <span>{{ list.cards.count }}</span>
-      </header>
-      <form method="post" action="{% url 'boards:delete_list' list.id %}">
-        {% csrf_token %}
-        <button class="danger-button compact-button" type="submit">Delete list</button>
-      </form>
+        <form method="post" action="{% url 'boards:delete_list' list.id %}">
+          {% csrf_token %}
+          <button class="danger-button compact-button" type="submit">Delete list</button>
+        </form>
+      </details>
       <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}" aria-label="{{ list.title }} cards">
         {% for card in list.cards.all %}
           <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}" aria-describedby="board-keyboard-help">
@@ -88,12 +95,15 @@
           </a>
         {% endfor %}
       </div>
-      <form class="card-create" method="post" action="{% url 'boards:create_card' list.id %}">
-        {% csrf_token %}
-        {{ card_form.title }}
-        {{ card_form.description }}
-        <button type="submit">Add card</button>
-      </form>
+      <details class="card-create disclosure-panel" data-qa-disclosure="add-card">
+        <summary>Add card</summary>
+        <form method="post" action="{% url 'boards:create_card' list.id %}">
+          {% csrf_token %}
+          {{ card_form.title }}
+          {{ card_form.description }}
+          <button type="submit">Add card</button>
+        </form>
+      </details>
     </article>
   {% empty %}
     <div class="empty-state wide">Add a list to start organizing cards.</div>

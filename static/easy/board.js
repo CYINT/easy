@@ -20,7 +20,8 @@ function nearestCard(stack, y) {
     (closest, child) => {
       const box = child.getBoundingClientRect();
       const offset = y - box.top - box.height / 2;
-      if (offset < 0 && offset > closest.offset) return { offset, element: child };
+      const beforeThreshold = box.height * 0.25;
+      if (offset < beforeThreshold && offset > closest.offset) return { offset, element: child };
       return closest;
     },
     { offset: Number.NEGATIVE_INFINITY, element: null },

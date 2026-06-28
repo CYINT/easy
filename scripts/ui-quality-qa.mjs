@@ -116,8 +116,17 @@ async function waitForServer() {
 async function collectQualityMetrics(page) {
   return page.evaluate((doneListId) => {
     const px = (value) => Number.parseFloat(value) || 0;
+    const cssTimeToMs = (value) => {
+      if (!value) return 0;
+      const trimmed = value.trim();
+      if (trimmed.endsWith("ms")) return Number.parseFloat(trimmed);
+      if (trimmed.endsWith("s")) return Number.parseFloat(trimmed) * 1000;
+      return Number.parseFloat(trimmed) || 0;
+    };
+    const cssTimes = (value) => value.split(",").map((part) => part.trim()).filter(Boolean);
     const rootStyle = getComputedStyle(document.body);
-    const elements = Array.from(document.querySelectorAll(".panel, .list-column, .card, button, input, textarea, select"));
+    const elements = Array.from(document.querySelectorAll(".panel, .list-column, .card, button, input, textarea, select, summary"));
+    const motionElements = Array.from(document.querySelectorAll(".card, button, .disclosure-panel summary"));
     const card = document.querySelector(".card");
     const cardStyle = card ? getComputedStyle(card) : null;
     return {
@@ -125,8 +134,36 @@ async function collectQualityMetrics(page) {
       bodyBackgroundImage: rootStyle.backgroundImage,
       cardContrast: cardStyle ? { color: cardStyle.color, background: cardStyle.backgroundColor } : null,
       maxRadius: Math.max(...elements.map((element) => px(getComputedStyle(element).borderTopLeftRadius))),
+      nonZeroLetterSpacing: elements
+        .map((element) => ({ tag: element.tagName, className: element.className, value: getComputedStyle(element).letterSpacing }))
+        .filter((item) => item.value !== "normal" && px(item.value) !== 0),
+      excessiveMotion: motionElements
+        .flatMap((element) => {
+          const style = getComputedStyle(element);
+          const delays = cssTimes(style.transitionDelay);
+          return cssTimes(style.transitionDuration).map((duration, index) => ({
+            tag: element.tagName,
+            className: element.className,
+            duration,
+            delay: delays[index] || "0s",
+          }));
+        })
+        .filter((item) => cssTimeToMs(item.duration) > 250 || cssTimeToMs(item.delay) > 0),
+      animatedElements: motionElements
+        .map((element) => getComputedStyle(element).transitionDuration)
+        .filter((duration) => cssTimes(duration).some((part) => cssTimeToMs(part) > 0))
+        .length,
+      hiddenDisclosureForms: Array.from(document.querySelectorAll("[data-qa-disclosure]:not([open])")).map((details) => {
+        const content = details.querySelector("form, .member-grid");
+        const box = content?.getBoundingClientRect();
+        return {
+          name: details.getAttribute("data-qa-disclosure"),
+          visibleWidth: box?.width || 0,
+          visibleHeight: box?.height || 0,
+        };
+      }),
       smallTargets: elements
-        .filter((element) => element.matches("button, input, textarea, select"))
+        .filter((element) => element.matches("button, input, textarea, select, summary"))
         .map((element) => ({ tag: element.tagName, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.width < 32 || box.height < 32),
@@ -140,19 +177,28 @@ async function collectQualityMetrics(page) {
   }, fixture.done);
 }
 
-async function assertQuality(page, viewport) {
+function assertSharedQuality(metrics, viewport) {
+  if (metrics.overflow) throw new Error(`Horizontal overflow at ${viewport.width}x${viewport.height}`);
+  if (metrics.maxRadius > 8) throw new Error(`Operational UI radius exceeds 8px: ${metrics.maxRadius}`);
+  if (metrics.smallTargets.length) throw new Error(`Controls below 32px target size: ${JSON.stringify(metrics.smallTargets)}`);
+  if (metrics.bodyBackgroundImage !== "none") throw new Error(`App background should be plain, got ${metrics.bodyBackgroundImage}`);
+  if (metrics.nonZeroLetterSpacing.length) throw new Error(`Operational UI uses non-zero letter spacing: ${JSON.stringify(metrics.nonZeroLetterSpacing)}`);
+  if (metrics.excessiveMotion.length) throw new Error(`Motion exceeds 250ms or uses delay: ${JSON.stringify(metrics.excessiveMotion)}`);
+  if (metrics.animatedElements < 1) throw new Error("Expected bounded transitions on cards, controls, or disclosure triggers");
+  const visibleClosedForms = metrics.hiddenDisclosureForms.filter((item) => item.visibleWidth > 0 || item.visibleHeight > 0);
+  if (visibleClosedForms.length) throw new Error(`Closed disclosure content is visible: ${JSON.stringify(visibleClosedForms)}`);
+}
+
+async function assertBoardQuality(page, viewport) {
   await page.setViewportSize(viewport);
   await page.goto(`${baseUrl}/boards/${fixture.board}/`);
   await page.waitForSelector("text=Quality Board");
 
   const metrics = await collectQualityMetrics(page);
-  if (metrics.overflow) throw new Error(`Horizontal overflow at ${viewport.width}x${viewport.height}`);
-  if (metrics.maxRadius > 8) throw new Error(`Operational UI radius exceeds 8px: ${metrics.maxRadius}`);
-  if (metrics.smallTargets.length) throw new Error(`Controls below 32px target size: ${JSON.stringify(metrics.smallTargets)}`);
+  assertSharedQuality(metrics, viewport);
   if (!metrics.emptyDropzone || metrics.emptyDropzone.height < 80) {
     throw new Error(`Empty drop zone is too small: ${JSON.stringify(metrics.emptyDropzone)}`);
   }
-  if (metrics.bodyBackgroundImage !== "none") throw new Error(`App background should be plain, got ${metrics.bodyBackgroundImage}`);
   if (!metrics.cardContrast || contrastRatio(metrics.cardContrast.color, metrics.cardContrast.background) < 4.5) {
     throw new Error(`Card text contrast below WCAG AA: ${JSON.stringify(metrics.cardContrast)}`);
   }
@@ -160,6 +206,23 @@ async function assertQuality(page, viewport) {
   await page.locator(".card").first().focus();
   const focusOutline = await page.locator(".card").first().evaluate((element) => getComputedStyle(element).outlineStyle);
   if (focusOutline === "none") throw new Error("Focused card has no visible outline");
+
+  await page.locator('[data-qa-disclosure="add-list"] > summary').click();
+  await page.waitForSelector('[data-qa-disclosure="add-list"][open] form');
+  await page.locator('[data-qa-disclosure="add-card"] > summary').first().click();
+  await page.waitForSelector('[data-qa-disclosure="add-card"][open] form');
+}
+
+async function assertDashboardQuality(page, viewport) {
+  await page.setViewportSize(viewport);
+  await page.goto(`${baseUrl}/boards/`);
+  await page.waitForSelector("text=Your boards");
+
+  const metrics = await collectQualityMetrics(page);
+  assertSharedQuality(metrics, viewport);
+
+  await page.locator('[data-qa-disclosure="create-board"] > summary').click();
+  await page.waitForSelector('[data-qa-disclosure="create-board"][open] form');
 }
 
 async function main() {
@@ -178,8 +241,10 @@ async function main() {
       },
     ]);
 
-    await assertQuality(page, { width: 1280, height: 900 });
-    await assertQuality(page, { width: 390, height: 844 });
+    await assertDashboardQuality(page, { width: 1280, height: 900 });
+    await assertDashboardQuality(page, { width: 390, height: 844 });
+    await assertBoardQuality(page, { width: 1280, height: 900 });
+    await assertBoardQuality(page, { width: 390, height: 844 });
   } finally {
     await browser.close();
   }

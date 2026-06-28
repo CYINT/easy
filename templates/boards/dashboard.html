@@ -11,12 +11,14 @@
 </section>
 
 <section class="dashboard-grid">
-  <form class="panel" method="post">
-    {% csrf_token %}
-    <h2>Create board</h2>
-    {{ form.as_p }}
-    <button type="submit">Create board</button>
-  </form>
+  <details class="panel disclosure-panel" data-qa-disclosure="create-board">
+    <summary>Create board</summary>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Create board</button>
+    </form>
+  </details>
 
   <div class="board-grid">
     {% for board in boards %}

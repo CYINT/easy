@@ -43,6 +43,7 @@ button,
   min-height: 2.45rem;
   padding: 0.65rem 1rem;
   font-weight: 750;
+  letter-spacing: 0;
   text-decoration: none;
   transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
@@ -150,7 +151,7 @@ main {
 
 .message {
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.82);
   padding: 0.75rem 1rem;
 }
@@ -182,17 +183,23 @@ main {
   color: var(--accent-2);
   font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.hero h1,
-.page-header h1,
-.board-header h1 {
+.hero h1 {
   margin: 0;
   font-size: clamp(2.4rem, 7vw, 5.2rem);
   line-height: 0.92;
-  letter-spacing: -0.08em;
+  letter-spacing: 0;
+}
+
+.page-header h1,
+.board-header h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  line-height: 1.08;
+  letter-spacing: 0;
 }
 
 .hero-copy {
@@ -384,6 +391,101 @@ main {
   margin-bottom: 1rem;
 }
 
+.disclosure-panel {
+  align-self: start;
+}
+
+.disclosure-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.45rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 850;
+  letter-spacing: 0;
+  list-style: none;
+  padding: 0.6rem 0.85rem;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.disclosure-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure-panel summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.disclosure-panel[open] summary {
+  border-color: rgba(31, 95, 139, 0.35);
+  background: rgba(31, 95, 139, 0.07);
+}
+
+.disclosure-panel[open] summary::after {
+  content: "-";
+}
+
+.disclosure-panel summary:hover {
+  border-color: rgba(31, 95, 139, 0.4);
+  box-shadow: 0 4px 10px rgba(23, 32, 42, 0.06);
+}
+
+.disclosure-panel summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.disclosure-panel:not([open]) > :not(summary) {
+  display: none;
+}
+
+.disclosure-panel > form,
+.disclosure-panel > .member-grid,
+.disclosure-panel > .list-title-form {
+  animation: reveal-panel 160ms ease-out;
+}
+
+.disclosure-panel[open] form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.inline-disclosure {
+  min-width: min(100%, 24rem);
+}
+
+.member-panel > summary {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.member-panel > summary:hover {
+  box-shadow: none;
+}
+
+.member-panel[open] > summary {
+  background: transparent;
+}
+
+.member-panel > summary::after {
+  background: var(--surface-muted);
+}
+
 .member-panel summary {
   cursor: pointer;
   font-weight: 900;
@@ -421,6 +523,14 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.list-column h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .list-title-form {
@@ -520,6 +630,15 @@ main {
   gap: 0.5rem;
 }
 
+.list-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.list-actions form + form {
+  margin-top: 0;
+}
+
 .card-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 25rem);
@@ -531,7 +650,7 @@ main {
 .card-main h1 input {
   font-size: clamp(1.6rem, 5vw, 3rem);
   font-weight: 900;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
 }
 
 .panel-subsection,
@@ -636,6 +755,29 @@ main {
   flex-direction: column;
 }
 
+@keyframes reveal-panel {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
 @media (max-width: 820px) {
   main {
     padding: 0.8rem;
@@ -656,6 +798,11 @@ main {
   .page-header,
   .board-header {
     align-items: stretch;
+  }
+
+  .page-header,
+  .board-header {
+    flex-direction: column;
   }
 
   .site-header,
