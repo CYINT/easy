@@ -426,9 +426,12 @@ textarea {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
   gap: 1.25rem;
   margin: 0 auto;
+}
+
+.dashboard-grid > .disclosure-panel {
+  max-width: 28rem;
 }
 
 .auth-shell {
