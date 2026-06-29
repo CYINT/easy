@@ -36,7 +36,8 @@ Complete `docs/release-checklist.md` before creating a public release tag.
 - Run `docker compose --profile edge up --build -d` on a host where Caddy should terminate public HTTPS, or `docker compose up --build -d` on Dan's current local bridge host.
 - Run migrations and create the first superuser if needed.
 - Confirm `python manage.py bootstrap_admin` created or updated the first administrator.
-- Confirm public signup requires a one-time administrator-created invitation code.
+- Confirm public signup requires a one-time administrator-created invitation.
+- Confirm an administrator-created invite link opens `/accounts/signup/?invite=<invite-code>` with the invite code prefilled.
 - Verify `https://<your-hostname>/health/` returns `{"status":"ok","service":"easy","release":{"version":"...","commit":"..."}}`.
 - For existing deployments, follow `docs/upgrade.md` and keep pre-upgrade database/media backups outside Git.
 

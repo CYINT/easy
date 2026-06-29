@@ -668,6 +668,29 @@ class EasyAuthFoundationTests(TestCase):
         response = self.client.post(reverse("account_reset_password"), {"email": "new@example.com"})
         self.assertEqual(response.status_code, 302)
 
+    def test_invitation_link_prefills_signup_form(self):
+        invitation = Invitation.objects.create(email="new@example.com")
+        self.assertEqual(invitation.get_signup_path(), f"{reverse('account_signup')}?invite={invitation.code}")
+
+        response = self.client.get(invitation.get_signup_path())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'value="{invitation.code}"')
+        self.assertContains(response, 'value="new@example.com"')
+
+    def test_unbound_invitation_link_prefills_only_invite_code(self):
+        invitation = Invitation.objects.create()
+        response = self.client.get(invitation.get_signup_path())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'value="{invitation.code}"')
+        self.assertNotContains(response, 'value="new@example.com"')
+
+    def test_invitation_link_accepts_legacy_invite_code_parameter(self):
+        invitation = Invitation.objects.create(email="legacy@example.com")
+        response = self.client.get(f"{reverse('account_signup')}?invite_code={invitation.code}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'value="{invitation.code}"')
+        self.assertContains(response, 'value="legacy@example.com"')
+
     def test_invitation_email_binding_is_enforced(self):
         invitation = Invitation.objects.create(email="invited@example.com")
         response = self.client.post(

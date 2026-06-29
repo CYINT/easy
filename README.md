@@ -97,7 +97,7 @@ These names affect the Django UI shell and account/MFA pages. They do not change
 
 ## Administrator And Invitations
 
-Easy is invite-only. Public self-signup requires a one-time invite code created by an administrator in Django admin.
+Easy is invite-only. Public self-signup requires a one-time invite created by an administrator in Django admin.
 
 Set these environment variables before first startup:
 
@@ -109,7 +109,15 @@ EASY_ADMIN_PASSWORD=...
 
 `python manage.py bootstrap_admin` creates or updates that account as an active staff superuser. The Docker entrypoint runs it after migrations. Do not commit the real administrator password.
 
-To invite a user, sign in at `/admin/`, create an `Invitation`, and send the generated code to the user out of band. The invite may be bound to a specific email address or left unbound. Each invite can be used once.
+To invite a user, sign in at `/admin/`, create an `Invitation`, and send the generated invite link to the user out of band. The invite may be bound to a specific email address or left unbound. Each invite can be used once.
+
+Invite links use this format:
+
+```text
+https://<your-hostname>/accounts/signup/?invite=<invite-code>
+```
+
+When a user opens the link, Easy lands on signup with the invite code prefilled. If the invitation is bound to a specific email address, the signup email field is prefilled too. The user then sets their password, creates the account, and can enroll MFA or passkeys after signing in.
 
 ## Docker Deployment
 

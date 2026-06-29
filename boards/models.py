@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.urls import reverse
+from django.utils.http import urlencode
 
 User = get_user_model()
 
@@ -98,6 +99,9 @@ class Invitation(models.Model):
     def __str__(self):
         target = self.email or "any email"
         return f"Invitation for {target}"
+
+    def get_signup_path(self):
+        return f"{reverse('account_signup')}?{urlencode({'invite': self.code})}"
 
     @property
     def is_used(self):

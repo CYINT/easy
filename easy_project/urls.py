@@ -2,10 +2,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from boards.auth_views import InviteSignupView
 from boards.frontend import frontend_app
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("accounts/signup/", InviteSignupView.as_view(), name="account_signup"),
     path("accounts/", include("allauth.urls")),
     path("api/v1/", include("boards.api_urls")),
     path("app/", frontend_app, name="frontend_app"),

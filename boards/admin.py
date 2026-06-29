@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import AgentToken, Attachment, Board, BoardList, BoardMembership, Card, Checklist, ChecklistItem, Comment, Invitation
 
@@ -42,10 +43,17 @@ admin.site.register(Attachment)
 
 @admin.register(Invitation)
 class InvitationAdmin(admin.ModelAdmin):
-    list_display = ["email", "code", "is_active", "used_by", "used_at", "created_by", "created_at"]
+    list_display = ["email", "signup_link", "is_active", "used_by", "used_at", "created_by", "created_at"]
     list_filter = ["is_active", "used_at", "created_at"]
     search_fields = ["email", "code", "used_by__email", "created_by__email"]
-    readonly_fields = ["code", "used_by", "used_at", "created_at"]
+    readonly_fields = ["code", "signup_link", "used_by", "used_at", "created_at"]
+
+    @admin.display(description="Invite link")
+    def signup_link(self, obj):
+        if not obj.pk:
+            return "Save to generate invite link."
+        path = obj.get_signup_path()
+        return format_html('<a href="{}">{}</a>', path, path)
 
     def save_model(self, request, obj, form, change):
         if not obj.created_by_id:

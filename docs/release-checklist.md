@@ -13,7 +13,8 @@ Use this checklist before creating a public release tag.
 - If Google OAuth is enabled, confirm `npm run qa:google-oauth-probe` passes for the deployed hostname without `redirect_uri_mismatch`.
 - Confirm Google OAuth remains documented as not manually tested if it is not part of the release.
 - Confirm `bootstrap_admin` created or updated the intended administrator from environment variables.
-- Confirm public signup requires an administrator-created invite code.
+- Confirm public signup requires an administrator-created invite.
+- Confirm an administrator-created invite link opens signup with the invite code prefilled.
 - Confirm email/password login works for the administrator.
 - Confirm MFA/passkey enrollment is available from the account security pages.
 - Confirm `/health/`, `/app/`, and `/api/v1/openapi.json` return HTTP 200 over HTTPS on the deployment hostname.
