@@ -1,5 +1,8 @@
 # Easy
 
+[![CI](https://github.com/CYINT/easy/actions/workflows/ci.yml/badge.svg)](https://github.com/CYINT/easy/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/CYINT/easy/branch/main/graph/badge.svg)](https://codecov.io/gh/CYINT/easy)
+
 Easy is an open-source, self-hosted team board for visual work tracking. It provides boards, lists, cards, comments, checklists, assignments, attachments, and drag-and-drop movement without plugin or automation overhead.
 
 Easy is designed to run on self-managed infrastructure and can be served publicly behind HTTPS on the hostname you configure.
@@ -43,7 +46,7 @@ Quick start:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py bootstrap_admin
@@ -243,11 +246,18 @@ UI work should follow `docs/ui-quality-standard.md`. The standard is intentional
 ## Verification
 
 ```powershell
+.\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe scripts\quality-gates.py
+.\.venv\Scripts\python.exe -m coverage run manage.py test
+.\.venv\Scripts\python.exe -m coverage report
 npm run qa:ui-quality
-docker compose config
+docker compose config --quiet
 ```
+
+The Python quality gate enforces Radon cyclomatic complexity rank `B` or better for application code and maintainability index rank `C` or better. Coverage is configured in `pyproject.toml` and fails below `80%` for non-test application code.
+
+GitHub Actions publishes `coverage.xml` to Codecov when the repository is connected to Codecov and a `CODECOV_TOKEN` secret is configured.
 
 ## Security Notes
 

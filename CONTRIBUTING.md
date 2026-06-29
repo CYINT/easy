@@ -21,7 +21,7 @@ Keep standalone product UI work in `frontend/`. Change Django templates only whe
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py bootstrap_admin
@@ -48,8 +48,11 @@ Google OAuth is disabled by default behind `EASY_ENABLE_GOOGLE_OAUTH=false`. Do 
 Run the focused checks for your change. For most backend or UI work:
 
 ```powershell
+.\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe scripts\quality-gates.py
+.\.venv\Scripts\python.exe -m coverage run manage.py test
+.\.venv\Scripts\python.exe -m coverage report
 npm run qa:frontend
 npm run qa:dragdrop
 npm run qa:ui-quality
@@ -57,6 +60,8 @@ docker compose config --quiet
 ```
 
 For release-related changes, also run the release gates described in `docs/release-checklist.md`.
+
+Ruff, Radon, coverage, and pip-audit are part of `requirements-dev.txt`. Keep cyclomatic complexity at Radon rank `B` or better, maintainability index at rank `C` or better, and non-test application coverage at or above the configured floor in `pyproject.toml`.
 
 ## UI Standards
 

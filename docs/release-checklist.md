@@ -7,6 +7,8 @@ Use this checklist before creating a public release tag.
 - Confirm `main` is pushed to `https://github.com/CYINT/easy`.
 - Confirm public CI is passing on the exact commit to be tagged.
 - Confirm no credentials, local `.env` files, database dumps, uploaded media, OAuth secrets, or backup archives are committed.
+- Confirm Ruff, Django checks, Python tests, Radon quality gates, coverage, frontend smoke, UI quality, dependency audit, Compose validation, and container build validation pass in CI.
+- Confirm Codecov upload is configured for the repository, or document why coverage upload is intentionally deferred.
 - Confirm `DJANGO_DEBUG=false` and production cookie/security settings are active in the deployment environment.
 - Confirm `EASY_RELEASE_COMMIT` is set to the exact deployed Git SHA and `/health/` reports that value.
 - Confirm `EASY_ENABLE_GOOGLE_OAUTH=false` unless Google OAuth is explicitly in release scope.
