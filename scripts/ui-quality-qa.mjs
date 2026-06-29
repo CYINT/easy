@@ -131,9 +131,15 @@ async function collectQualityMetrics(page) {
     const cardStyle = card ? getComputedStyle(card) : null;
     const sidebar = document.querySelector(".app-sidebar");
     const appLayout = document.querySelector(".app-layout");
+    const boardControls = document.querySelector(".board-controls");
     return {
       overflow: document.documentElement.scrollWidth > window.innerWidth,
       bodyBackgroundImage: rootStyle.backgroundImage,
+      typography: {
+        fontSize: px(rootStyle.fontSize),
+        lineHeight: px(rootStyle.lineHeight),
+        fontFamily: rootStyle.fontFamily,
+      },
       shell: {
         hasLayout: Boolean(appLayout),
         sidebarWidth: sidebar?.getBoundingClientRect().width || 0,
@@ -145,6 +151,7 @@ async function collectQualityMetrics(page) {
         }),
       },
       cardContrast: cardStyle ? { color: cardStyle.color, background: cardStyle.backgroundColor } : null,
+      cardPadding: cardStyle ? px(cardStyle.paddingTop) : null,
       maxRadius: Math.max(...elements.map((element) => px(getComputedStyle(element).borderTopLeftRadius))),
       nonZeroLetterSpacing: elements
         .map((element) => ({ tag: element.tagName, className: element.className, value: getComputedStyle(element).letterSpacing }))
@@ -179,6 +186,27 @@ async function collectQualityMetrics(page) {
         .map((element) => ({ tag: element.tagName, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.width < 32 || box.height < 32),
+      undersizedPrimaryControls: Array.from(document.querySelectorAll("button:not(.compact-button), input, textarea, select, summary, .app-nav a"))
+        .map((element) => ({
+          tag: element.tagName,
+          className: element.className,
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height,
+        }))
+        .filter((box) => box.width > 0 && box.height > 0)
+        .filter((box) => box.height < 38),
+      undersizedCompactControls: Array.from(document.querySelectorAll("button.compact-button"))
+        .map((element) => ({ tag: element.tagName, className: element.className, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
+        .filter((box) => box.width > 0 && box.height > 0)
+        .filter((box) => box.height < 34),
+      boardControls: boardControls
+        ? {
+            width: boardControls.getBoundingClientRect().width,
+            height: boardControls.getBoundingClientRect().height,
+            columns: getComputedStyle(boardControls).gridTemplateColumns,
+            items: boardControls.querySelectorAll(".member-panel").length,
+          }
+        : null,
       listColumns: Array.from(document.querySelectorAll(".list-column")).map((column) => {
         const box = column.getBoundingClientRect();
         return { width: box.width, height: box.height };
@@ -197,7 +225,12 @@ function assertSharedQuality(metrics, viewport) {
   if (metrics.overflow) throw new Error(`Horizontal overflow at ${viewport.width}x${viewport.height}`);
   if (metrics.maxRadius > 8) throw new Error(`Operational UI radius exceeds 8px: ${metrics.maxRadius}`);
   if (metrics.smallTargets.length) throw new Error(`Controls below 32px target size: ${JSON.stringify(metrics.smallTargets)}`);
+  if (metrics.undersizedPrimaryControls.length) throw new Error(`Primary controls below 38px height: ${JSON.stringify(metrics.undersizedPrimaryControls)}`);
+  if (metrics.undersizedCompactControls.length) throw new Error(`Compact controls below 34px height: ${JSON.stringify(metrics.undersizedCompactControls)}`);
   if (metrics.bodyBackgroundImage !== "none") throw new Error(`App background should be plain, got ${metrics.bodyBackgroundImage}`);
+  if (metrics.typography.fontSize < 15 || metrics.typography.fontSize > 17) throw new Error(`Body font size outside readable operational range: ${JSON.stringify(metrics.typography)}`);
+  const lineHeightRatio = metrics.typography.lineHeight / metrics.typography.fontSize;
+  if (lineHeightRatio < 1.35 || lineHeightRatio > 1.65) throw new Error(`Body line-height outside readable operational range: ${JSON.stringify(metrics.typography)}`);
   if (!metrics.shell.hasLayout) throw new Error("Authenticated pages should render the application shell");
   if (viewport.width >= 900 && metrics.shell.sidebarWidth < 180) throw new Error(`Desktop sidebar is too narrow: ${JSON.stringify(metrics.shell)}`);
   if (viewport.width < 900 && metrics.shell.sidebarHeight > 90) throw new Error(`Mobile navigation rail is too tall: ${JSON.stringify(metrics.shell)}`);
@@ -221,6 +254,9 @@ async function assertBoardQuality(page, viewport) {
   }
   const undersizedColumns = metrics.listColumns.filter((column) => column.width < 280 || column.width > 360);
   if (undersizedColumns.length) throw new Error(`Board list column width outside expected range: ${JSON.stringify(metrics.listColumns)}`);
+  if (!metrics.boardControls || metrics.boardControls.items !== 2) throw new Error(`Board controls should group members and settings: ${JSON.stringify(metrics.boardControls)}`);
+  if (viewport.width >= 900 && metrics.boardControls.columns.split(" ").length < 2) throw new Error(`Desktop board controls should use two columns: ${JSON.stringify(metrics.boardControls)}`);
+  if (metrics.cardPadding < 10 || metrics.cardPadding > 14) throw new Error(`Card padding outside dense readable range: ${metrics.cardPadding}`);
   if (!metrics.cardContrast || contrastRatio(metrics.cardContrast.color, metrics.cardContrast.background) < 4.5) {
     throw new Error(`Card text contrast below WCAG AA: ${JSON.stringify(metrics.cardContrast)}`);
   }
