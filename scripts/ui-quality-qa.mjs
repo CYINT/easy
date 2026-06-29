@@ -69,18 +69,23 @@ django.setup()
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.test import Client
-from boards.models import Board, BoardList, Card
+from boards.models import Board, BoardList, Card, Checklist, ChecklistItem, Comment
 
 User = get_user_model()
 user = User.objects.create_user(username="qa", email="qa@example.com", password="password-12345")
 board = Board.objects.create(name="Quality Board", description="Design QA", owner=user)
 todo = BoardList.objects.create(board=board, title="Todo", position=0)
 done = BoardList.objects.create(board=board, title="Done", position=1)
-Card.objects.create(board_list=todo, title="Contrast audit", description="Check visible hierarchy and movement", position=0, created_by=user)
+card = Card.objects.create(board_list=todo, title="Contrast audit", description="Check visible hierarchy and movement", position=0, created_by=user)
+Comment.objects.create(card=card, author=user, body="Controls should stay compact and visually consistent.")
+checklist = Checklist.objects.create(card=card, title="Polish checklist", position=0)
+ChecklistItem.objects.create(checklist=checklist, text="Normalize button sizes", is_done=True, position=0)
+ChecklistItem.objects.create(checklist=checklist, text="Verify restrained danger buttons", position=1)
 client = Client()
 client.force_login(user)
 print(json.dumps({
   "board": board.id,
+  "card": card.id,
   "todo": todo.id,
   "done": done.id,
   "sessionCookieName": settings.SESSION_COOKIE_NAME,
@@ -127,6 +132,26 @@ async function collectQualityMetrics(page) {
     const rootStyle = getComputedStyle(document.body);
     const elements = Array.from(document.querySelectorAll(".panel, .list-column, .card, button, input, textarea, select, summary, .app-nav a, .user-chip"));
     const motionElements = Array.from(document.querySelectorAll(".card, button, .disclosure-panel summary, .app-nav a"));
+    const visibleButtons = Array.from(document.querySelectorAll("button"))
+      .map((element) => {
+        const box = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          text: element.textContent.trim(),
+          className: element.className,
+          width: box.width,
+          height: box.height,
+          background: style.backgroundColor,
+          color: style.color,
+          borderColor: style.borderTopColor,
+          paddingLeft: px(style.paddingLeft),
+          paddingRight: px(style.paddingRight),
+          paddingTop: px(style.paddingTop),
+          paddingBottom: px(style.paddingBottom),
+        };
+      })
+      .filter((button) => button.width > 0 && button.height > 0);
+    const normalButtons = visibleButtons.filter((button) => !button.className.includes("compact-button") && !button.className.includes("icon-button"));
     const card = document.querySelector(".card");
     const cardStyle = card ? getComputedStyle(card) : null;
     const sidebar = document.querySelector(".app-sidebar");
@@ -172,6 +197,15 @@ async function collectQualityMetrics(page) {
         .map((element) => getComputedStyle(element).transitionDuration)
         .filter((duration) => cssTimes(duration).some((part) => cssTimeToMs(part) > 0))
         .length,
+      buttonSystem: {
+        oversized: visibleButtons.filter((button) => button.height > 48),
+        excessivePadding: visibleButtons.filter((button) => button.paddingLeft > 18 || button.paddingRight > 18 || button.paddingTop > 12 || button.paddingBottom > 12),
+        unclassifiedAccent: visibleButtons.filter((button) => button.background === "rgb(31, 95, 139)" && !button.className.includes("primary-button")),
+        filledDanger: visibleButtons.filter((button) => button.background === "rgb(180, 35, 24)"),
+        normalHeightSpread: normalButtons.length
+          ? Math.max(...normalButtons.map((button) => button.height)) - Math.min(...normalButtons.map((button) => button.height))
+          : 0,
+      },
       hiddenDisclosureForms: Array.from(document.querySelectorAll("[data-qa-disclosure]:not([open])")).map((details) => {
         const content = details.querySelector("form, .member-grid");
         const box = content?.getBoundingClientRect();
@@ -183,10 +217,10 @@ async function collectQualityMetrics(page) {
       }),
       smallTargets: elements
         .filter((element) => element.matches("button, input, textarea, select, summary, .app-nav a"))
-        .map((element) => ({ tag: element.tagName, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
+        .map((element) => ({ tag: element.tagName, type: element.getAttribute("type") || "", name: element.getAttribute("name") || "", className: element.className, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.width < 32 || box.height < 32),
-      undersizedPrimaryControls: Array.from(document.querySelectorAll("button:not(.compact-button), input, textarea, select, summary, .app-nav a"))
+      undersizedPrimaryControls: Array.from(document.querySelectorAll('button:not(.compact-button):not(.icon-button), input:not([type="checkbox"]):not([type="radio"]), textarea, select, summary, .app-nav a'))
         .map((element) => ({
           tag: element.tagName,
           className: element.className,
@@ -195,7 +229,7 @@ async function collectQualityMetrics(page) {
         }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.height < 38),
-      undersizedCompactControls: Array.from(document.querySelectorAll("button.compact-button"))
+      undersizedCompactControls: Array.from(document.querySelectorAll("button.compact-button, button.icon-button, input[type='checkbox'], input[type='radio']"))
         .map((element) => ({ tag: element.tagName, className: element.className, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.height < 34),
@@ -241,6 +275,11 @@ function assertSharedQuality(metrics, viewport) {
   if (metrics.nonZeroLetterSpacing.length) throw new Error(`Operational UI uses non-zero letter spacing: ${JSON.stringify(metrics.nonZeroLetterSpacing)}`);
   if (metrics.excessiveMotion.length) throw new Error(`Motion exceeds 250ms or uses delay: ${JSON.stringify(metrics.excessiveMotion)}`);
   if (metrics.animatedElements < 1) throw new Error("Expected bounded transitions on cards, controls, or disclosure triggers");
+  if (metrics.buttonSystem.oversized.length) throw new Error(`Buttons are taller than 48px: ${JSON.stringify(metrics.buttonSystem.oversized)}`);
+  if (metrics.buttonSystem.excessivePadding.length) throw new Error(`Buttons use excessive padding: ${JSON.stringify(metrics.buttonSystem.excessivePadding)}`);
+  if (metrics.buttonSystem.unclassifiedAccent.length) throw new Error(`Accent buttons must use explicit primary-button intent: ${JSON.stringify(metrics.buttonSystem.unclassifiedAccent)}`);
+  if (metrics.buttonSystem.filledDanger.length) throw new Error(`Danger buttons should be restrained, not filled red: ${JSON.stringify(metrics.buttonSystem.filledDanger)}`);
+  if (metrics.buttonSystem.normalHeightSpread > 4) throw new Error(`Normal button heights are inconsistent: ${JSON.stringify(metrics.buttonSystem)}`);
   const visibleClosedForms = metrics.hiddenDisclosureForms.filter((item) => item.visibleWidth > 0 || item.visibleHeight > 0);
   if (visibleClosedForms.length) throw new Error(`Closed disclosure content is visible: ${JSON.stringify(visibleClosedForms)}`);
 }
@@ -289,6 +328,30 @@ async function assertDashboardQuality(page, viewport) {
   await page.waitForSelector('[data-qa-disclosure="create-board"][open] form');
 }
 
+async function assertCardDetailQuality(page, viewport) {
+  await page.setViewportSize(viewport);
+  await page.goto(`${baseUrl}/cards/${fixture.card}/`);
+  await page.waitForSelector('input[value="Contrast audit"]');
+
+  const metrics = await collectQualityMetrics(page);
+  assertSharedQuality(metrics, viewport);
+
+  const cardPageMetrics = await page.evaluate(() => ({
+    sidePanelWidth: document.querySelector(".card-side")?.getBoundingClientRect().width || 0,
+    actionButtons: Array.from(document.querySelectorAll(".card-page button")).map((button) => {
+      const box = button.getBoundingClientRect();
+      return { text: button.textContent.trim(), className: button.className, width: box.width, height: box.height };
+    }).filter((button) => button.width > 0 && button.height > 0),
+    dangerButtons: Array.from(document.querySelectorAll(".card-page .danger-button")).length,
+    primaryButtons: Array.from(document.querySelectorAll(".card-page .primary-button")).length,
+    iconButtons: Array.from(document.querySelectorAll(".card-page .icon-button")).length,
+  }));
+  if (viewport.width >= 900 && cardPageMetrics.sidePanelWidth < 280) throw new Error(`Card side panel is too cramped: ${JSON.stringify(cardPageMetrics)}`);
+  if (cardPageMetrics.primaryButtons < 4) throw new Error(`Card detail should mark create/save actions as primary: ${JSON.stringify(cardPageMetrics)}`);
+  if (cardPageMetrics.dangerButtons < 3) throw new Error(`Card detail should use restrained danger buttons for delete actions: ${JSON.stringify(cardPageMetrics)}`);
+  if (cardPageMetrics.iconButtons < 1) throw new Error(`Checklist toggles should use icon-button controls: ${JSON.stringify(cardPageMetrics)}`);
+}
+
 async function main() {
   await waitForServer();
   const browser = await chromium.launch();
@@ -309,6 +372,8 @@ async function main() {
     await assertDashboardQuality(page, { width: 390, height: 844 });
     await assertBoardQuality(page, { width: 1280, height: 900 });
     await assertBoardQuality(page, { width: 390, height: 844 });
+    await assertCardDetailQuality(page, { width: 1280, height: 900 });
+    await assertCardDetailQuality(page, { width: 390, height: 844 });
   } finally {
     await browser.close();
   }

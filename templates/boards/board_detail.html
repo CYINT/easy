@@ -18,7 +18,7 @@
         <form class="inline-create" method="post" action="{% url 'boards:create_list' board.id %}">
           {% csrf_token %}
           {{ list_form.title }}
-          <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add list</span></button>
+          <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add list</span></button>
         </form>
       </section>
 
@@ -32,7 +32,7 @@
               <form class="member-row" method="post" action="{% url 'boards:remove_board_member' membership.id %}">
                 {% csrf_token %}
                 <span>{{ membership.user.email|default:membership.user.username }} &middot; {{ membership.get_role_display }}</span>
-                <button type="submit">Remove</button>
+                <button class="danger-button compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Remove</span></button>
               </form>
             {% empty %}
               <p class="muted">No extra members yet.</p>
@@ -42,7 +42,7 @@
             {% csrf_token %}
             <h2>Add member</h2>
             {{ member_form.as_p }}
-            <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-users"></use></svg><span>Save member</span></button>
+            <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-users"></use></svg><span>Save member</span></button>
           </form>
         </div>
       </details>
@@ -54,13 +54,13 @@
             {% csrf_token %}
             <h2>Edit board</h2>
             {{ board_form.as_p }}
-            <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-settings"></use></svg><span>Save board</span></button>
+            <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-save"></use></svg><span>Save board</span></button>
           </form>
           <form method="post" action="{% url 'boards:delete_board' board.id %}">
             {% csrf_token %}
             <h2>Delete board</h2>
             <p class="muted">Deleting this board also deletes its lists, cards, comments, checklists, and attachments.</p>
-            <button class="danger-button" type="submit">Delete board</button>
+            <button class="danger-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Delete board</span></button>
           </form>
         </div>
       </details>
@@ -81,11 +81,11 @@
               <form class="list-title-form" method="post" action="{% url 'boards:update_list' list.id %}">
                 {% csrf_token %}
                 <input name="title" value="{{ list.title }}" aria-label="List title">
-                <button type="submit">Save</button>
+                <button class="compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-save"></use></svg><span>Save</span></button>
               </form>
               <form method="post" action="{% url 'boards:delete_list' list.id %}">
                 {% csrf_token %}
-                <button class="danger-button compact-button" type="submit">Delete list</button>
+                <button class="danger-button compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Delete list</span></button>
               </form>
             </div>
           </details>
@@ -110,7 +110,7 @@
           {% csrf_token %}
           {{ card_form.title }}
           {{ card_form.description }}
-          <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add card</span></button>
+          <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add card</span></button>
         </form>
       </details>
     </article>

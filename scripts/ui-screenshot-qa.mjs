@@ -84,7 +84,7 @@ django.setup()
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.test import Client
-from boards.models import Board, BoardList, Card
+from boards.models import Board, BoardList, Card, Checklist, ChecklistItem, Comment
 
 User = get_user_model()
 user = User.objects.create_user(username="qa", email="qa@example.com", password="password-12345")
@@ -92,13 +92,18 @@ board = Board.objects.create(name="Design Review Board", description="Menu, icon
 todo = BoardList.objects.create(board=board, title="Todo", position=0)
 doing = BoardList.objects.create(board=board, title="Doing", position=1)
 done = BoardList.objects.create(board=board, title="Done", position=2)
-Card.objects.create(board_list=todo, title="Audit spacing", description="Check visual rhythm, icon alignment, and menu placement", position=0, created_by=user)
+card = Card.objects.create(board_list=todo, title="Audit spacing", description="Check visual rhythm, icon alignment, and menu placement", position=0, created_by=user)
 Card.objects.create(board_list=todo, title="Review controls", description="Buttons should be easy to hit without bloating the board", position=1, created_by=user)
 Card.objects.create(board_list=doing, title="Validate screenshots", description="Desktop and mobile captures should be nonblank and balanced", position=0, created_by=user)
+Comment.objects.create(card=card, author=user, body="Buttons should look intentional and stay compact.")
+checklist = Checklist.objects.create(card=card, title="UI polish", position=0)
+ChecklistItem.objects.create(checklist=checklist, text="Normalize action buttons", is_done=True, position=0)
+ChecklistItem.objects.create(checklist=checklist, text="Check responsive card page controls", position=1)
 client = Client()
 client.force_login(user)
 print(json.dumps({
   "board": board.id,
+  "card": card.id,
   "todo": todo.id,
   "doing": doing.id,
   "done": done.id,
@@ -224,6 +229,12 @@ async function main() {
       await capture(page, `board-${viewportName}`);
       await assertBoardMenu(page, viewportName);
       await assertListMenu(page, viewportName);
+
+      await page.goto(`${baseUrl}/cards/${fixture.card}/`);
+      await page.waitForSelector('input[value="Audit spacing"]');
+      await assertNoOverflow(page, `${viewportName} card detail`);
+      await assertIconRendering(page, `${viewportName} card detail`);
+      await capture(page, `card-detail-${viewportName}`);
     }
 
     console.log(`screenshots=${screenshotDir}`);

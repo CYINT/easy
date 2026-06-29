@@ -16,12 +16,12 @@
         {{ form.assignees }}
       </fieldset>
       <div class="form-actions">
-        <button type="submit">Save card</button>
+        <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-save"></use></svg><span>Save card</span></button>
       </div>
     </form>
     <form method="post" action="{% url 'boards:delete_card' card.id %}">
       {% csrf_token %}
-      <button class="danger-button" type="submit">Delete card</button>
+      <button class="danger-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Delete card</span></button>
     </form>
 
     <section class="panel-subsection">
@@ -29,7 +29,7 @@
       <form method="post" action="{% url 'boards:add_comment' card.id %}">
         {% csrf_token %}
         {{ comment_form.body }}
-        <button type="submit">Comment</button>
+        <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-comment"></use></svg><span>Comment</span></button>
       </form>
       <div class="comments">
         {% for comment in card.comments.all %}
@@ -41,7 +41,7 @@
               </div>
               <form method="post" action="{% url 'boards:delete_comment' comment.id %}">
                 {% csrf_token %}
-                <button class="danger-button compact-button" type="submit">Delete</button>
+                <button class="danger-button compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Delete</span></button>
               </form>
             </div>
             <p>{{ comment.body|linebreaksbr }}</p>
@@ -63,24 +63,24 @@
             <div class="check-item editable-check-item">
               <form method="post" action="{% url 'boards:toggle_checklist_item' item.id %}">
                 {% csrf_token %}
-                <button type="submit" aria-label="Toggle {{ item.text }}">{% if item.is_done %}✓{% else %}&nbsp;{% endif %}</button>
+                <button class="icon-button" type="submit" aria-label="Toggle {{ item.text }}">{% if item.is_done %}<svg class="icon" aria-hidden="true"><use href="#icon-check"></use></svg>{% else %}&nbsp;{% endif %}</button>
               </form>
               <form class="check-edit-form" method="post" action="{% url 'boards:update_checklist_item' item.id %}">
                 {% csrf_token %}
                 <input name="text" value="{{ item.text }}" class="{% if item.is_done %}done{% endif %}" aria-label="Checklist item text">
                 <input name="position" type="number" min="0" value="{{ item.position }}" aria-label="Checklist item position">
-                <button class="compact-button" type="submit">Save</button>
+                <button class="compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-save"></use></svg><span>Save</span></button>
               </form>
               <form method="post" action="{% url 'boards:delete_checklist_item' item.id %}">
                 {% csrf_token %}
-                <button class="danger-button compact-button" type="submit">Delete</button>
+                <button class="danger-button compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Delete</span></button>
               </form>
             </div>
           {% endfor %}
           <form class="inline-create" method="post" action="{% url 'boards:add_checklist_item' checklist.id %}">
             {% csrf_token %}
             {{ checklist_item_form.text }}
-            <button type="submit">Add item</button>
+            <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add item</span></button>
           </form>
         </div>
       {% empty %}
@@ -89,7 +89,7 @@
       <form class="inline-create stacked" method="post" action="{% url 'boards:add_checklist' card.id %}">
         {% csrf_token %}
         {{ checklist_form.title }}
-        <button type="submit">Add checklist</button>
+        <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add checklist</span></button>
       </form>
     </section>
 
@@ -98,7 +98,7 @@
       <form method="post" enctype="multipart/form-data" action="{% url 'boards:add_attachment' card.id %}">
         {% csrf_token %}
         {{ attachment_form.file }}
-        <button type="submit">Upload</button>
+        <button class="primary-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg><span>Upload</span></button>
       </form>
       <div class="attachments">
         {% for attachment in card.attachments.all %}
@@ -106,12 +106,12 @@
             <img class="attachment-preview" src="{% url 'boards:download_attachment' attachment.id %}" alt="{{ attachment.original_name }}">
           {% endif %}
           <a class="attachment" href="{% url 'boards:download_attachment' attachment.id %}" target="_blank" rel="noopener">
-            <span>{{ attachment.original_name }}</span>
+            <span><svg class="icon" aria-hidden="true"><use href="#icon-paperclip"></use></svg>{{ attachment.original_name }}</span>
             <small>{{ attachment.size|filesizeformat }}</small>
           </a>
           <form method="post" action="{% url 'boards:delete_attachment' attachment.id %}">
             {% csrf_token %}
-            <button class="danger-button compact-button" type="submit">Delete file</button>
+            <button class="danger-button compact-button" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg><span>Delete file</span></button>
           </form>
         {% empty %}
           <p class="muted">No attachments yet.</p>
