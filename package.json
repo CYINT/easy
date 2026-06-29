@@ -11,10 +11,12 @@
     "qa:google-oauth-probe": "node scripts/google-oauth-probe.mjs",
     "qa:public-ingress-probe": "node scripts/public-ingress-probe.mjs",
     "qa:ui-quality": "node scripts/ui-quality-qa.mjs",
+    "qa:ui-screenshots": "node scripts/ui-screenshot-qa.mjs",
     "qa:release-gates": "node scripts/release-gates.mjs",
     "release:tag": "node scripts/create-release-tag.mjs"
   },
   "devDependencies": {
-    "playwright": "^1.57.0"
+    "playwright": "^1.57.0",
+    "pngjs": "^7.0.0"
   }
 }

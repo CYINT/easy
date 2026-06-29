@@ -131,7 +131,7 @@ async function collectQualityMetrics(page) {
     const cardStyle = card ? getComputedStyle(card) : null;
     const sidebar = document.querySelector(".app-sidebar");
     const appLayout = document.querySelector(".app-layout");
-    const boardControls = document.querySelector(".board-controls");
+    const boardMenu = document.querySelector('[data-qa-disclosure="board-menu"]');
     return {
       overflow: document.documentElement.scrollWidth > window.innerWidth,
       bodyBackgroundImage: rootStyle.backgroundImage,
@@ -199,12 +199,14 @@ async function collectQualityMetrics(page) {
         .map((element) => ({ tag: element.tagName, className: element.className, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
         .filter((box) => box.width > 0 && box.height > 0)
         .filter((box) => box.height < 34),
-      boardControls: boardControls
+      icons: document.querySelectorAll(".icon").length,
+      boardMenu: boardMenu
         ? {
-            width: boardControls.getBoundingClientRect().width,
-            height: boardControls.getBoundingClientRect().height,
-            columns: getComputedStyle(boardControls).gridTemplateColumns,
-            items: boardControls.querySelectorAll(".member-panel").length,
+            width: boardMenu.getBoundingClientRect().width,
+            height: boardMenu.getBoundingClientRect().height,
+            open: boardMenu.hasAttribute("open"),
+            panelVisible: Boolean(boardMenu.querySelector(".board-menu-panel")?.getBoundingClientRect().height),
+            menuSections: boardMenu.querySelectorAll(".menu-section").length,
           }
         : null,
       listColumns: Array.from(document.querySelectorAll(".list-column")).map((column) => {
@@ -232,6 +234,7 @@ function assertSharedQuality(metrics, viewport) {
   const lineHeightRatio = metrics.typography.lineHeight / metrics.typography.fontSize;
   if (lineHeightRatio < 1.35 || lineHeightRatio > 1.65) throw new Error(`Body line-height outside readable operational range: ${JSON.stringify(metrics.typography)}`);
   if (!metrics.shell.hasLayout) throw new Error("Authenticated pages should render the application shell");
+  if (metrics.icons < 6) throw new Error(`Expected iconized shell and action controls, got ${metrics.icons}`);
   if (viewport.width >= 900 && metrics.shell.sidebarWidth < 180) throw new Error(`Desktop sidebar is too narrow: ${JSON.stringify(metrics.shell)}`);
   if (viewport.width < 900 && metrics.shell.sidebarHeight > 90) throw new Error(`Mobile navigation rail is too tall: ${JSON.stringify(metrics.shell)}`);
   if (metrics.shell.navTargets.length < 3) throw new Error(`Expected primary shell navigation targets: ${JSON.stringify(metrics.shell.navTargets)}`);
@@ -254,8 +257,8 @@ async function assertBoardQuality(page, viewport) {
   }
   const undersizedColumns = metrics.listColumns.filter((column) => column.width < 280 || column.width > 360);
   if (undersizedColumns.length) throw new Error(`Board list column width outside expected range: ${JSON.stringify(metrics.listColumns)}`);
-  if (!metrics.boardControls || metrics.boardControls.items !== 2) throw new Error(`Board controls should group members and settings: ${JSON.stringify(metrics.boardControls)}`);
-  if (viewport.width >= 900 && metrics.boardControls.columns.split(" ").length < 2) throw new Error(`Desktop board controls should use two columns: ${JSON.stringify(metrics.boardControls)}`);
+  if (!metrics.boardMenu || metrics.boardMenu.menuSections < 3) throw new Error(`Board menu should group list, members, and settings actions: ${JSON.stringify(metrics.boardMenu)}`);
+  if (metrics.boardMenu.panelVisible) throw new Error(`Board menu panel should be closed by default: ${JSON.stringify(metrics.boardMenu)}`);
   if (metrics.cardPadding < 10 || metrics.cardPadding > 14) throw new Error(`Card padding outside dense readable range: ${metrics.cardPadding}`);
   if (!metrics.cardContrast || contrastRatio(metrics.cardContrast.color, metrics.cardContrast.background) < 4.5) {
     throw new Error(`Card text contrast below WCAG AA: ${JSON.stringify(metrics.cardContrast)}`);
@@ -265,8 +268,11 @@ async function assertBoardQuality(page, viewport) {
   const focusOutline = await page.locator(".card").first().evaluate((element) => getComputedStyle(element).outlineStyle);
   if (focusOutline === "none") throw new Error("Focused card has no visible outline");
 
-  await page.locator('[data-qa-disclosure="add-list"] > summary').click();
-  await page.waitForSelector('[data-qa-disclosure="add-list"][open] form');
+  await page.locator('[data-qa-disclosure="board-menu"] > summary').click();
+  await page.waitForSelector('[data-qa-disclosure="board-menu"][open] .board-menu-panel');
+  await page.waitForSelector('[data-qa-disclosure="board-menu"][open] form[action$="/lists/"]');
+  await page.locator('[data-qa-disclosure="board-members"] > summary').click();
+  await page.waitForSelector('[data-qa-disclosure="board-members"][open] form[action$="/members/"]');
   await page.locator('[data-qa-disclosure="add-card"] > summary').first().click();
   await page.waitForSelector('[data-qa-disclosure="add-card"][open] form');
 }

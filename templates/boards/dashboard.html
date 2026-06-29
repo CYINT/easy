@@ -12,18 +12,18 @@
 
 <section class="dashboard-grid">
   <details class="panel disclosure-panel" data-qa-disclosure="create-board">
-    <summary>Create board</summary>
+    <summary><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Create board</span></summary>
     <form method="post">
       {% csrf_token %}
       {{ form.as_p }}
-      <button type="submit">Create board</button>
+      <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-board"></use></svg><span>Create board</span></button>
     </form>
   </details>
 
   <div class="board-grid">
     {% for board in boards %}
       <a class="board-tile" href="{{ board.get_absolute_url }}">
-        <strong>{{ board.name }}</strong>
+        <strong><svg class="icon" aria-hidden="true"><use href="#icon-board"></use></svg><span>{{ board.name }}</span></strong>
         {% if board.description %}<span>{{ board.description|truncatechars:120 }}</span>{% endif %}
         <small>{{ board.list_count }} list{{ board.list_count|pluralize }}</small>
       </a>

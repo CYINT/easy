@@ -10,59 +10,62 @@
     <h1>{{ board.name }}</h1>
     {% if board.description %}<p>{{ board.description }}</p>{% endif %}
   </div>
-  <details class="disclosure-panel inline-disclosure" data-qa-disclosure="add-list">
-    <summary>Add list</summary>
-    <form class="inline-create" method="post" action="{% url 'boards:create_list' board.id %}">
-      {% csrf_token %}
-      {{ list_form.title }}
-      <button type="submit">Add list</button>
-    </form>
-  </details>
-</section>
-
-<section class="board-controls" aria-label="Board administration">
-<details class="member-panel panel disclosure-panel">
-  <summary>Board members</summary>
-  <div class="member-grid">
-    <div>
-      <h2>Access</h2>
-      <p><strong>Owner:</strong> {{ board.owner.email|default:board.owner.username }}</p>
-      {% for membership in board.memberships.all %}
-        <form class="member-row" method="post" action="{% url 'boards:remove_board_member' membership.id %}">
+  <details class="board-menu disclosure-panel" data-qa-disclosure="board-menu">
+    <summary><svg class="icon" aria-hidden="true"><use href="#icon-menu"></use></svg><span>Board menu</span></summary>
+    <div class="board-menu-panel">
+      <section class="menu-section">
+        <h2><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add list</span></h2>
+        <form class="inline-create" method="post" action="{% url 'boards:create_list' board.id %}">
           {% csrf_token %}
-          <span>{{ membership.user.email|default:membership.user.username }} · {{ membership.get_role_display }}</span>
-          <button type="submit">Remove</button>
+          {{ list_form.title }}
+          <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add list</span></button>
         </form>
-      {% empty %}
-        <p class="muted">No extra members yet.</p>
-      {% endfor %}
-    </div>
-    <form method="post" action="{% url 'boards:add_board_member' board.id %}">
-      {% csrf_token %}
-      <h2>Add member</h2>
-      {{ member_form.as_p }}
-      <button type="submit">Save member</button>
-    </form>
-  </div>
-</details>
+      </section>
 
-<details class="member-panel panel disclosure-panel">
-  <summary>Board settings</summary>
-  <div class="member-grid">
-    <form method="post" action="{% url 'boards:update_board' board.id %}">
-      {% csrf_token %}
-      <h2>Edit board</h2>
-      {{ board_form.as_p }}
-      <button type="submit">Save board</button>
-    </form>
-    <form method="post" action="{% url 'boards:delete_board' board.id %}">
-      {% csrf_token %}
-      <h2>Delete board</h2>
-      <p class="muted">Deleting this board also deletes its lists, cards, comments, checklists, and attachments.</p>
-      <button class="danger-button" type="submit">Delete board</button>
-    </form>
-  </div>
-</details>
+      <details class="menu-section nested-disclosure" data-qa-disclosure="board-members">
+        <summary><svg class="icon" aria-hidden="true"><use href="#icon-users"></use></svg><span>Members</span></summary>
+        <div class="member-grid">
+          <div>
+            <h2>Access</h2>
+            <p><strong>Owner:</strong> {{ board.owner.email|default:board.owner.username }}</p>
+            {% for membership in board.memberships.all %}
+              <form class="member-row" method="post" action="{% url 'boards:remove_board_member' membership.id %}">
+                {% csrf_token %}
+                <span>{{ membership.user.email|default:membership.user.username }} &middot; {{ membership.get_role_display }}</span>
+                <button type="submit">Remove</button>
+              </form>
+            {% empty %}
+              <p class="muted">No extra members yet.</p>
+            {% endfor %}
+          </div>
+          <form method="post" action="{% url 'boards:add_board_member' board.id %}">
+            {% csrf_token %}
+            <h2>Add member</h2>
+            {{ member_form.as_p }}
+            <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-users"></use></svg><span>Save member</span></button>
+          </form>
+        </div>
+      </details>
+
+      <details class="menu-section nested-disclosure" data-qa-disclosure="board-settings">
+        <summary><svg class="icon" aria-hidden="true"><use href="#icon-settings"></use></svg><span>Settings</span></summary>
+        <div class="member-grid">
+          <form method="post" action="{% url 'boards:update_board' board.id %}">
+            {% csrf_token %}
+            <h2>Edit board</h2>
+            {{ board_form.as_p }}
+            <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-settings"></use></svg><span>Save board</span></button>
+          </form>
+          <form method="post" action="{% url 'boards:delete_board' board.id %}">
+            {% csrf_token %}
+            <h2>Delete board</h2>
+            <p class="muted">Deleting this board also deletes its lists, cards, comments, checklists, and attachments.</p>
+            <button class="danger-button" type="submit">Delete board</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </details>
 </section>
 
 <section class="board" data-board-id="{{ board.id }}" aria-label="{{ board.name }} lists">
@@ -70,20 +73,24 @@
     <article class="list-column" data-list-id="{{ list.id }}">
       <header>
         <h2>{{ list.title }}</h2>
-        <span>{{ list.cards.count }}</span>
+        <div class="list-header-tools">
+          <span>{{ list.cards.count }}</span>
+          <details class="list-actions disclosure-panel" data-qa-disclosure="list-actions">
+            <summary aria-label="{{ list.title }} list actions"><svg class="icon" aria-hidden="true"><use href="#icon-more"></use></svg></summary>
+            <div class="list-menu-panel">
+              <form class="list-title-form" method="post" action="{% url 'boards:update_list' list.id %}">
+                {% csrf_token %}
+                <input name="title" value="{{ list.title }}" aria-label="List title">
+                <button type="submit">Save</button>
+              </form>
+              <form method="post" action="{% url 'boards:delete_list' list.id %}">
+                {% csrf_token %}
+                <button class="danger-button compact-button" type="submit">Delete list</button>
+              </form>
+            </div>
+          </details>
+        </div>
       </header>
-      <details class="list-actions disclosure-panel" data-qa-disclosure="list-actions">
-        <summary>List actions</summary>
-        <form class="list-title-form" method="post" action="{% url 'boards:update_list' list.id %}">
-          {% csrf_token %}
-          <input name="title" value="{{ list.title }}" aria-label="List title">
-          <button type="submit">Save</button>
-        </form>
-        <form method="post" action="{% url 'boards:delete_list' list.id %}">
-          {% csrf_token %}
-          <button class="danger-button compact-button" type="submit">Delete list</button>
-        </form>
-      </details>
       <div class="card-stack" data-dropzone="true" data-list-id="{{ list.id }}" aria-label="{{ list.title }} cards">
         {% for card in list.cards.all %}
           <a class="card" draggable="true" data-card-id="{{ card.id }}" data-move-url="{% url 'boards:move_card' card.id %}" href="{{ card.get_absolute_url }}" aria-describedby="board-keyboard-help">
@@ -98,17 +105,17 @@
         {% endfor %}
       </div>
       <details class="card-create disclosure-panel" data-qa-disclosure="add-card">
-        <summary>Add card</summary>
+        <summary><svg class="icon" aria-hidden="true"><use href="#icon-card"></use></svg><span>Add card</span></summary>
         <form method="post" action="{% url 'boards:create_card' list.id %}">
           {% csrf_token %}
           {{ card_form.title }}
           {{ card_form.description }}
-          <button type="submit">Add card</button>
+          <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Add card</span></button>
         </form>
       </details>
     </article>
   {% empty %}
-    <div class="empty-state wide">Add a list to start organizing cards.</div>
+    <div class="empty-state wide">Add a list from the board menu to start organizing cards.</div>
   {% endfor %}
 </section>
 

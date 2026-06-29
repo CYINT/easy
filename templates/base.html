@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{% static 'easy/app.css' %}">
 </head>
 <body class="{% if user.is_authenticated %}has-app-shell{% else %}public-shell{% endif %}">
+  {% include "includes/icons.html" %}
   <header class="site-header">
     <a class="brand" href="{% url 'boards:home' %}">{{ easy_app_name }}</a>
     <nav class="top-nav" aria-label="Account">
@@ -16,7 +17,7 @@
         <span class="user-chip">{{ user.email|default:user.username }}</span>
         <form class="logout-form" method="post" action="{% url 'account_logout' %}">
           {% csrf_token %}
-          <button type="submit">Sign out</button>
+          <button type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-log-out"></use></svg><span>Sign out</span></button>
         </form>
       {% else %}
         <a href="{% url 'account_login' %}">Sign in</a>
@@ -36,10 +37,10 @@
     <div class="app-layout">
       <aside class="app-sidebar" aria-label="Workspace navigation">
         <nav class="app-nav">
-          <a href="{% url 'boards:dashboard' %}" {% if request.path == "/boards/" %}aria-current="page"{% endif %}>Boards</a>
-          <a href="/app/">API client</a>
-          <a href="/api/v1/openapi.json">OpenAPI</a>
-          <a href="/accounts/2fa/">{{ easy_mfa_display_name }}</a>
+          <a href="{% url 'boards:dashboard' %}" {% if request.path == "/boards/" %}aria-current="page"{% endif %}><svg class="icon" aria-hidden="true"><use href="#icon-board"></use></svg><span>Boards</span></a>
+          <a href="/app/"><svg class="icon" aria-hidden="true"><use href="#icon-card"></use></svg><span>API client</span></a>
+          <a href="/api/v1/openapi.json"><svg class="icon" aria-hidden="true"><use href="#icon-code"></use></svg><span>OpenAPI</span></a>
+          <a href="/accounts/2fa/"><svg class="icon" aria-hidden="true"><use href="#icon-key"></use></svg><span>{{ easy_mfa_display_name }}</span></a>
         </nav>
       </aside>
   {% endif %}

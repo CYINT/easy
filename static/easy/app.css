@@ -43,6 +43,21 @@ a {
   color: inherit;
 }
 
+.icon-sprite {
+  display: none;
+}
+
+.icon {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
 button,
 .button-link,
 .primary-action,
@@ -53,6 +68,7 @@ button,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   min-height: 2.5rem;
   padding: 0.62rem 0.95rem;
   font-size: var(--text-sm);
@@ -198,6 +214,7 @@ textarea {
 .app-nav a {
   display: flex;
   align-items: center;
+  gap: 0.55rem;
   min-height: 2.5rem;
   border-radius: 8px;
   color: var(--muted);
@@ -339,6 +356,7 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   margin: 0 auto 1rem;
+  position: relative;
 }
 
 .board-header > div {
@@ -362,14 +380,6 @@ textarea {
   grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
   gap: 1.25rem;
   margin: 0 auto;
-}
-
-.board-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  max-width: var(--content-max);
-  margin: 0 auto 0.9rem;
 }
 
 .auth-shell {
@@ -458,6 +468,9 @@ textarea {
 }
 
 .board-tile strong {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: var(--text-lg);
   line-height: 1.25;
 }
@@ -504,7 +517,7 @@ textarea {
   align-self: start;
 }
 
-.disclosure-panel summary {
+.disclosure-panel > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -522,11 +535,11 @@ textarea {
   transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.disclosure-panel summary::-webkit-details-marker {
+.disclosure-panel > summary::-webkit-details-marker {
   display: none;
 }
 
-.disclosure-panel summary::after {
+.disclosure-panel > summary::after {
   content: "+";
   display: grid;
   place-items: center;
@@ -538,21 +551,21 @@ textarea {
   font-weight: 900;
 }
 
-.disclosure-panel[open] summary {
+.disclosure-panel[open] > summary {
   border-color: rgba(31, 95, 139, 0.35);
   background: rgba(31, 95, 139, 0.07);
 }
 
-.disclosure-panel[open] summary::after {
+.disclosure-panel[open] > summary::after {
   content: "-";
 }
 
-.disclosure-panel summary:hover {
+.disclosure-panel > summary:hover {
   border-color: rgba(31, 95, 139, 0.4);
   box-shadow: 0 4px 10px rgba(23, 32, 42, 0.06);
 }
 
-.disclosure-panel summary:focus-visible {
+.disclosure-panel > summary:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
@@ -575,6 +588,74 @@ textarea {
 
 .inline-disclosure {
   min-width: min(100%, 24rem);
+}
+
+.board-menu {
+  min-width: min(100%, 12rem);
+}
+
+.board-menu > summary {
+  justify-content: center;
+}
+
+.board-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 0.75rem;
+  width: min(42rem, calc(100vw - var(--sidebar-width) - 2rem));
+  max-height: min(42rem, calc(100vh - var(--header-height) - 4rem));
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 16px 36px rgba(23, 32, 42, 0.16);
+  padding: 0.85rem;
+}
+
+.menu-section {
+  display: grid;
+  gap: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-rail);
+  padding: 0.75rem;
+}
+
+.menu-section h2,
+.menu-section summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: flex-start;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: 850;
+}
+
+.nested-disclosure > summary {
+  min-height: 2.35rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.nested-disclosure > summary::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.nested-disclosure[open] > summary::after {
+  content: "-";
+}
+
+.nested-disclosure[open] > summary {
+  background: transparent;
 }
 
 .member-panel > summary {
@@ -632,6 +713,42 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.list-header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.list-actions {
+  position: relative;
+}
+
+.list-actions > summary {
+  justify-content: center;
+  width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+}
+
+.list-actions > summary::after {
+  display: none;
+}
+
+.list-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 25;
+  display: grid;
+  gap: 0.55rem;
+  width: 17rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 12px 24px rgba(23, 32, 42, 0.14);
+  padding: 0.65rem;
 }
 
 .list-column h2 {
@@ -751,12 +868,26 @@ textarea {
   gap: 0.5rem;
 }
 
-.list-actions {
-  display: grid;
-  gap: 0.55rem;
+.card-create > summary {
+  justify-content: flex-start;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
 }
 
-.list-actions form + form {
+.card-create > summary::after {
+  margin-left: auto;
+}
+
+.card-create > summary:hover {
+  border-color: var(--line);
+  background: var(--surface-muted);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.list-menu-panel form + form {
   margin-top: 0;
 }
 
@@ -903,7 +1034,6 @@ textarea {
   .page-header,
   .board-header,
   .dashboard-grid,
-  .board-controls,
   .account-shell,
   .card-page,
   .member-grid,
@@ -950,6 +1080,18 @@ textarea {
   .page-header,
   .board-header {
     flex-direction: column;
+  }
+
+  .board-menu,
+  .board-menu > summary {
+    width: 100%;
+  }
+
+  .board-menu-panel {
+    position: static;
+    width: 100%;
+    max-height: 65vh;
+    margin-top: 0.45rem;
   }
 
   .site-header,
